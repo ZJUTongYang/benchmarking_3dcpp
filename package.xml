@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>benchmarking_3D_coverage_path_planning</name>
+  <name>benchmarking_3dcpp</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="tong.yang@zju.edu.cn">Tong Yang</maintainer>
