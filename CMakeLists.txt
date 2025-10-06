@@ -18,6 +18,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(nuc_msgs REQUIRED)
 
 find_package(Open3D REQUIRED)
 
@@ -99,6 +100,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
   geometry_msgs
   visualization_msgs
   tf2_eigen
+  nuc_msgs
   Open3D
 )
 

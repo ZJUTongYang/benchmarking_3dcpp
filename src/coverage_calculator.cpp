@@ -41,8 +41,8 @@ CoverageResult CoverageCalculator::calculateCoverage(
     double coverage_ratio = static_cast<double>(covered_count) / 
                            surface_points.size();
     
-    return {coverage_ratio, coverage_mask, 
-            surface_points.size(), covered_count};
+    return {path, coverage_ratio, coverage_mask, 
+            surface_points.size(), covered_count, surface_points};
 }
 
 std::vector<bool> CoverageCalculator::calculateCoverageCPU(

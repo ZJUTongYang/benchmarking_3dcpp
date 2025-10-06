@@ -16,6 +16,13 @@ def generate_launch_description():
         description='Path to the surface to be covered.'
     )
 
+    nuc_node = Node(
+        package='nuc_ros2',
+        executable='nuc_node',
+        name='nuc_node',
+        output='screen'
+    )
+
     benchmarking_3dcpp_node = Node(
         package='benchmarking_3dcpp',
         executable='benchmarking_3dcpp_node',
@@ -28,6 +35,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         scene_filename_arg,
+        nuc_node,
         benchmarking_3dcpp_node
     ])
 

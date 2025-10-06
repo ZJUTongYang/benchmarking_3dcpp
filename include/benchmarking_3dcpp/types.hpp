@@ -19,8 +19,10 @@ struct RobotWaypoint {
 };
 
 struct CoverageResult {
+    std::vector<RobotWaypoint> robot_path;
     double coverage_ratio;
     std::vector<bool> coverage_mask;
     size_t total_points;
     size_t covered_points;
+    std::vector<SurfacePoint> surface_points;
 };
