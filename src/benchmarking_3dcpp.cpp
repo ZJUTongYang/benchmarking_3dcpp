@@ -22,9 +22,10 @@ Benchmarking3DCPP::Benchmarking3DCPP():
     }
 
     this->declare_parameter("use_cuda", true);
-    this->declare_parameter("point_density", 1000.0);
-    this->declare_parameter("max_distance", 0.1);
-    this->declare_parameter("max_angle", M_PI/4.0);
+    this->declare_parameter("point_density", 20000.0);
+    this->declare_parameter("max_distance", 0.01);
+    // this->declare_parameter("max_angle", M_PI/4.0);
+    this->declare_parameter("max_angle", M_PI);
 
     // Subscribers
     path_sub_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
@@ -69,7 +70,8 @@ Benchmarking3DCPP::Benchmarking3DCPP():
 
     // Initialize coverage calculator
     bool use_cuda = this->get_parameter("use_cuda").as_bool();
-    calculator_ = std::make_unique<CoverageCalculator>(use_cuda);
+    double point_density = this->get_parameter("point_density").as_double();
+    calculator_ = std::make_unique<CoverageCalculator>(use_cuda, point_density);
 
     algorithm_is_called_= false;
 
@@ -79,15 +81,15 @@ Benchmarking3DCPP::Benchmarking3DCPP():
             if(initialized_ && !algorithm_is_called_)
             {
                 auto request = this->createNUCRequestFromMesh(*the_scene_, "world");
-                std::cout << "We check the scene: " << std::endl;
-                for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
-                {
-                    std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
-                }
-                for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
-                {
-                    std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
-                }
+                // std::cout << "We check the scene: " << std::endl;
+                // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
+                // {
+                //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
+                // }
+                // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
+                // {
+                //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
+                // }
                 auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
                 auto result_future = this->client_->async_send_request(request_ptr, 
                     std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
@@ -103,10 +105,10 @@ void Benchmarking3DCPP::nucResultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>:
     auto response = future.get();
     nav_msgs::msg::Path path = response->coverage;
     std::cout << "We got response from nuc_ros2 with size: " << path.poses.size() << std::endl;
-    for(auto iter = path.poses.begin(); iter != path.poses.end(); iter++)
-    {
-        std::cout << iter->pose.position.x << ", " << iter->pose.position.y << std::endl;
-    }
+    // for(auto iter = path.poses.begin(); iter != path.poses.end(); iter++)
+    // {
+    //     std::cout << iter->pose.position.x << ", " << iter->pose.position.y << std::endl;
+    // }
 
     geometry_msgs::msg::PoseArray path_array;
     path_array.header = path.header;

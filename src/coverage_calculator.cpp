@@ -3,9 +3,10 @@
 #include <benchmarking_3dcpp/cuda_kernels.cuh>
 #include <algorithm>
 #include <execution>
+#include <rclcpp/rclcpp.hpp>
 
-CoverageCalculator::CoverageCalculator(bool use_cuda) 
-    : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>()) {
+CoverageCalculator::CoverageCalculator(bool use_cuda, double point_density) 
+    : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>(point_density)) {
     if (use_cuda_) {
         setupCUDA();
     }
@@ -25,6 +26,7 @@ CoverageResult CoverageCalculator::calculateCoverage(
     // Sample surface points
     auto surface_points = sampler_->sampleUniformly(mesh);
     
+    rclcpp::Time t1 = rclcpp::Clock().now();
     // Calculate coverage
     std::vector<bool> coverage_mask;
     if (use_cuda_) {
@@ -34,6 +36,8 @@ CoverageResult CoverageCalculator::calculateCoverage(
         coverage_mask = calculateCoverageCPU(surface_points, path,
                                            max_distance, max_angle_rad);
     }
+    rclcpp::Time t2 = rclcpp::Clock().now();
+    std::cout << "Coverage evaluation time (CUDA): " << (t2 - t1).seconds() << "s" << std::endl;
     
     // Count covered points
     size_t covered_count = std::count(coverage_mask.begin(), 
@@ -85,6 +89,7 @@ std::vector<bool> CoverageCalculator::calculateCoverageCUDA(
     double max_distance, double max_angle_rad) {
     
     // Convert to CUDA types
+    // YT: we don't need surface point normal direction
     std::vector<CudaSurfacePoint> cuda_points;
     cuda_points.reserve(surface_points.size());
     for (const auto& point : surface_points) {
@@ -118,16 +123,39 @@ std::vector<bool> CoverageCalculator::calculateCoverageCUDA(
     CudaSurfacePoint* d_points = nullptr;
     CudaWaypoint* d_waypoints = nullptr;
     
-    cudaMalloc(&d_points, cuda_points.size() * sizeof(CudaSurfacePoint));
-    cudaMalloc(&d_waypoints, cuda_waypoints.size() * sizeof(CudaWaypoint));
+    cudaError_t err = cudaMalloc(&d_points, cuda_points.size() * sizeof(CudaSurfacePoint));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed for points: %s\n", cudaGetErrorString(err));
+        return std::vector<bool>(surface_points.size(), false);
+    }
+
+    err = cudaMalloc(&d_waypoints, cuda_waypoints.size() * sizeof(CudaWaypoint));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed for waypoints: %s\n", cudaGetErrorString(err));
+        cudaFree(d_points);
+        return std::vector<bool>(surface_points.size(), false);
+    }
     
     // Copy data to GPU
-    cudaMemcpy(d_points, cuda_points.data(),
+    err = cudaMemcpy(d_points, cuda_points.data(),
               cuda_points.size() * sizeof(CudaSurfacePoint),
               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_waypoints, cuda_waypoints.data(),
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed for points: %s\n", cudaGetErrorString(err));
+        cudaFree(d_points);
+        cudaFree(d_waypoints);
+        return std::vector<bool>(surface_points.size(), false);
+    }
+
+    err = cudaMemcpy(d_waypoints, cuda_waypoints.data(),
               cuda_waypoints.size() * sizeof(CudaWaypoint),
               cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed for waypoints: %s\n", cudaGetErrorString(err));
+        cudaFree(d_points);
+        cudaFree(d_waypoints);
+        return std::vector<bool>(surface_points.size(), false);
+    }
     
     // Launch kernel
     coverageKernelLauncher(d_points, cuda_points.size(),
@@ -136,9 +164,14 @@ std::vector<bool> CoverageCalculator::calculateCoverageCUDA(
                           static_cast<float>(max_angle_rad));
     
     // Copy results back
-    cudaMemcpy(cuda_points.data(), d_points,
+    err = cudaMemcpy(cuda_points.data(), d_points,
               cuda_points.size() * sizeof(CudaSurfacePoint),
               cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed for results: %s\n", cudaGetErrorString(err));
+    }
+    
+
     
     // Convert back to bool mask
     std::vector<bool> coverage_mask(cuda_points.size());

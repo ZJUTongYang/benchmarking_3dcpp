@@ -7,7 +7,7 @@
 
 class CoverageCalculator {
 public:
-    CoverageCalculator(bool use_cuda = true);
+    CoverageCalculator(bool use_cuda = true, double point_density=1000);
     ~CoverageCalculator();
     
     CoverageResult calculateCoverage(
