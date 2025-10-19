@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 project(benchmarking_3dcpp)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -19,6 +19,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(nuc_msgs REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(spdlog REQUIRED)
 
 find_package(Open3D REQUIRED)
 
@@ -50,7 +52,7 @@ include_directories(
 )
 
 # Add CUDA source files
-set(CUDA_SOURCES src/cuda_kernels.cu)
+set(CUDA_SOURCES src/cuda/cuda_kernels.cu)
 
 # Create library for CUDA kernels with explicit language specification
 add_library(cuda_kernels STATIC)
@@ -80,8 +82,8 @@ target_link_libraries(cuda_kernels
 add_executable(benchmarking_3dcpp_node 
   src/benchmarking_3dcpp_node.cpp
   src/benchmarking_3dcpp.cpp
-  src/surface_sampler.cpp
-  src/coverage_calculator.cpp)
+  src/eval/surface_sampler.cpp
+  src/eval/coverage_evaluator.cpp)
 
 
 
@@ -102,6 +104,8 @@ ament_target_dependencies(benchmarking_3dcpp_node
   tf2_eigen
   nuc_msgs
   Open3D
+  nlohmann_json
+  spdlog
 )
 
 # Add compiler flags for OpenMP
@@ -122,6 +126,11 @@ install(DIRECTORY
 
 install(DIRECTORY
   scene
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  config
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "types.hpp"
+#include <benchmarking_3dcpp/types.hpp>
 #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <random>

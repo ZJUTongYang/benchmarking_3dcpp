@@ -6,7 +6,6 @@ int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<Benchmarking3DCPP>();
-  // auto nuc_client = std::make_shared<NUCClient>();
 
   rclcpp::executors::MultiThreadedExecutor executor(
     rclcpp::ExecutorOptions(),
@@ -14,10 +13,8 @@ int main(int argc, char **argv)
   );
 
   executor.add_node(node);
-  // executor.add_node(nuc_client);
 
   executor.spin();
-
 
   rclcpp::shutdown();
 }

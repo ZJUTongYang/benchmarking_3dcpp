@@ -1,4 +1,4 @@
-#include <benchmarking_3dcpp/cuda_kernels.cuh>
+#include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cmath>

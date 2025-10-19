@@ -1,14 +1,14 @@
 #pragma once
 #include <benchmarking_3dcpp/types.hpp>
-#include <benchmarking_3dcpp/surface_sampler.hpp>
+#include <benchmarking_3dcpp/eval/surface_sampler.hpp>
 #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <vector>
 
-class CoverageCalculator {
+class CoverageEvaluator {
 public:
-    CoverageCalculator(bool use_cuda = true, double point_density=1000);
-    ~CoverageCalculator();
+    CoverageEvaluator(bool use_cuda = true, double point_density=1000);
+    ~CoverageEvaluator();
     
     CoverageResult calculateCoverage(
         const open3d::geometry::TriangleMesh& mesh,
