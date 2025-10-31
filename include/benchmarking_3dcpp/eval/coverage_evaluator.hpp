@@ -4,21 +4,51 @@
 #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <vector>
+#include <benchmarking_3dcpp/input_types.hpp>
+#include <yaml-cpp/yaml.h>
+#include <benchmarking_3dcpp/types.hpp>
+
+struct Task
+{
+    int task_id;
+    RobotConfig robot;
+    SceneConfig scene;
+    std::shared_ptr<GeometryData> p_surface;
+    AlgorithmConfig algorithm;
+
+    CoverageResult result;
+};
 
 class CoverageEvaluator {
 public:
     CoverageEvaluator(bool use_cuda = true, double point_density=1000);
     ~CoverageEvaluator();
     
-    CoverageResult calculateCoverage(
-        const open3d::geometry::TriangleMesh& mesh,
-        const std::vector<RobotWaypoint>& path,
-        double max_distance = 0.1,
-        double max_angle_rad = M_PI / 4.0);
-        
-    void setSurfaceSamplingDensity(double density);
+    void calculateCoverage(int current_test_id);
+
+    void registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
+        const std::string& algorithm_name, const YAML::Node& config, 
+        const std::unordered_map<std::string, std::shared_ptr<GeometryData> >& scenes);
+
+    int getCoverageRadius(int current_test_id)
+    {
+        return tasks_[current_test_id].robot.tool_radius;
+    }
+
+    const Task& getTask(int test_id)
+    {
+        return tasks_[test_id];
+    }
+
+    Task& getTaskNonConst(int test_id)
+    {
+        return tasks_[test_id];
+    }
 
 private:
+
+    std::vector<Task> tasks_;
+
     bool use_cuda_;
     std::unique_ptr<SurfaceSampler> sampler_;
     

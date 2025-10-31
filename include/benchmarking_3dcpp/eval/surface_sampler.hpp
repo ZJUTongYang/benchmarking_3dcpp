@@ -10,6 +10,9 @@ public:
     
     std::vector<SurfacePoint> sampleUniformly(
         const open3d::geometry::TriangleMesh& mesh);
+
+    std::vector<SurfacePoint> sampleUniformly(
+        const open3d::geometry::PointCloud& mesh);
     
     std::vector<SurfacePoint> sampleUniformlyCUDA(
         const open3d::geometry::TriangleMesh& mesh);

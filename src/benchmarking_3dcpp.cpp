@@ -4,27 +4,29 @@
 #include <string>
 #include <memory>
 #include <iostream>
-#include <benchmarking_3dcpp/coverage_calculator.hpp>
+#include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
+#include <yaml-cpp/yaml.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
+#include <benchmarking_3dcpp/alg/nuc.hpp>
 
 Benchmarking3DCPP::Benchmarking3DCPP(): 
     Node("benchmarking_3dcpp_node")
 {
     initialized_ = false;
-    // We set some parameters
-    // wall_clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
+    geometryLoader_ = std::make_unique<GeometryLoader>();
 
-    this->declare_parameter("scene_filename", "NOT_SET");
-    scene_filename_ = this->get_parameter("scene_filename").as_string();
-    if(scene_filename_ == "NOT_SET")
+    std::cout << "test 1" << std::endl;
+    this->declare_parameter("config_filename", "NOT_SET");
+    std::string config_filename_ = this->get_parameter("config_filename").as_string();
+    if(config_filename_ == "NOT_SET")
     {
-        RCLCPP_ERROR(this->get_logger(), "Scene filename not set");
+        RCLCPP_ERROR(this->get_logger(), "Config filename not set");
         return;
     }
+    YAML::Node config = YAML::LoadFile(config_filename_);
+    std::cout << "test 2" << std::endl;
 
-    this->declare_parameter("use_cuda", true);
-    this->declare_parameter("point_density", 20000.0);
-    this->declare_parameter("max_distance", 0.01);
-    // this->declare_parameter("max_angle", M_PI/4.0);
     this->declare_parameter("max_angle", M_PI);
 
     // Subscribers
@@ -43,61 +45,125 @@ Benchmarking3DCPP::Benchmarking3DCPP():
     scene_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "scene_visualization", 10
     );
+    std::cout << "test 3" << std::endl;
         
     // Create client
     client_ = this->create_client<nuc_msgs::srv::GetNuc>("get_nuc");
 
-
-    // If the file is a stl file, we directly load it as a mesh
-    std::string ext = getFileExtension(scene_filename_);
-
-    if (ext == ".pcd") {
-        std::cout << "This is a PCD file" << std::endl;
-        the_scene_ = nullptr;
-        // Load as point cloud
-    } else if (ext == ".stl") 
+    // The benchmarking platform loads all scenes and only share pointers to the evaluator
+    scenes_.clear();
+    for(const auto& scene : config["scenes"])
     {
-        // std::cout << "This is an STL file" << std::endl;
-        the_scene_ = loadSTLFile(scene_filename_);
-        // Load as mesh
-    } else {
-        std::cout << "Unknown file type: " << ext << std::endl;
-        the_scene_ = nullptr;
+        std::string scene_name = scene["name"].as<std::string>();
+        std::string scene_filename = scene["filename"].as<std::string>();
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmarking_3dcpp");
+        std::filesystem::path scene_path = std::filesystem::path(package_share_directory) / "scene" / scene_filename;
+        std::cout << "scene_path: " << scene_path.string() << std::endl;
+        std::shared_ptr<GeometryData> p_scene = loadGeometryFile(scene_path.string());
+        if(p_scene == nullptr)
+        {
+            std::cout << "YT: error, we cannot skip a scene file, because they are ordered" << std::endl;
+            return ;
+        }
+        scenes_[scene_name] = p_scene;
     }
+    std::cout << "test 4" << std::endl;
 
-    if(the_scene_ == nullptr)
-        return ;
+    // p_the_scene_ = loadGeometryFile(scene_filename_);
+
+    // if(p_the_scene_ == nullptr)
+    //     return ;
 
     // Initialize coverage calculator
-    bool use_cuda = this->get_parameter("use_cuda").as_bool();
-    double point_density = this->get_parameter("point_density").as_double();
-    calculator_ = std::make_unique<CoverageCalculator>(use_cuda, point_density);
+    // bool use_cuda = this->get_parameter("use_cuda").as_bool();
+    // double point_density = this->get_parameter("point_density").as_double();
+    bool use_cuda = config["use_cuda"].as<bool>();
+    double point_density = config["point_density"].as<double>();
+    benchmarker_ = std::make_unique<CoverageEvaluator>(use_cuda, point_density);
+    std::cout << "test 5" << std::endl;
 
-    algorithm_is_called_= false;
+    int num_robots = config["robots"].size();
+    int num_scenes = config["scenes"].size();
+    int num_algorithms = config["algorithms"].size();
+    scheduleAllTests(num_robots, num_scenes, num_algorithms, config);
+    std::cout << "test 6" << std::endl;
+
+    test_is_running_= false;
+    curr_test_index_ = 0;
 
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(1000),
-        [this](){
-            if(initialized_ && !algorithm_is_called_)
-            {
-                auto request = this->createNUCRequestFromMesh(*the_scene_, "world");
-                // std::cout << "We check the scene: " << std::endl;
-                // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
-                // {
-                //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
-                // }
-                // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
-                // {
-                //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
-                // }
-                auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
-                auto result_future = this->client_->async_send_request(request_ptr, 
-                    std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
-            }
-            algorithm_is_called_ = true;
-        }
-    );
+        std::bind(&Benchmarking3DCPP::runSingleTest, this));
+    std::cout << "test 7" << std::endl;
+        
     initialized_ = true;
+}
+
+void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config)
+{
+    for(int i = 0; i < num_robots; i++)
+    {
+        for(int j = 0; j < num_scenes; j++)
+        {
+            for(int k = 0; k < num_algorithms; k++)
+            {
+                int task_id = i * num_scenes * num_algorithms + j * num_algorithms + k;
+
+                std::string robot_name = config["robots"][i]["name"].as<std::string>();
+                std::string scene_name = config["scenes"][j]["name"].as<std::string>();
+                std::string algorithm_name = config["algorithms"][k]["name"].as<std::string>();
+                benchmarker_->registerATest(task_id, robot_name, scene_name, algorithm_name, config, scenes_);
+            }
+        }
+    }
+}
+
+void Benchmarking3DCPP::runSingleTest()
+{
+    if(!initialized_ || test_is_running_)
+        return ;
+
+    // we perform the i-th test
+    const RobotConfig& the_robot_config = benchmarker_->getTask(curr_test_index_).robot;
+    const SceneConfig& the_scene_config = benchmarker_->getTask(curr_test_index_).scene;
+    const std::shared_ptr<GeometryData>& p_the_surface = benchmarker_->getTask(curr_test_index_).p_surface;
+
+    const AlgorithmConfig& the_algorithm_config = benchmarker_->getTask(curr_test_index_).algorithm;
+
+    std::shared_ptr<CoverageAlgorithm> p_algorithm;
+    if(the_algorithm_config.name == "nuc")
+    {
+        p_algorithm = std::make_shared<NUCAlgorithm>(this->shared_from_this());
+    }
+    else
+    {
+        std::cout << "YT: error, we do not support this algorithm: " << the_algorithm_config.name << std::endl;
+        return ;
+    }
+    benchmarker_->getTaskNonConst(curr_test_index_).result = p_algorithm->execute(p_the_surface);
+
+
+
+// [this](){
+        //     if(initialized_ && !algorithm_is_called_)
+        //     {
+        //         auto request = this->createNUCRequestFromMesh(*p_the_scene_, "world");
+        //         // std::cout << "We check the scene: " << std::endl;
+        //         // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
+        //         // {
+        //         //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
+        //         // }
+        //         // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
+        //         // {
+        //         //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
+        //         // }
+        //         auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
+        //         auto result_future = this->client_->async_send_request(request_ptr, 
+        //             std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
+        //     }
+        //     algorithm_is_called_ = true;
+        // }
+    // );
 }
 
 void Benchmarking3DCPP::nucResultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future)
@@ -121,57 +187,42 @@ void Benchmarking3DCPP::nucResultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>:
 }
 
 
-void Benchmarking3DCPP::loadPath()
+// nuc_msgs::srv::GetNuc::Request Benchmarking3DCPP::createNUCRequestFromMesh(
+//     const open3d::geometry::TriangleMesh& mesh, 
+//     const std::string& frame_id) {
+    
+//     nuc_msgs::srv::GetNuc::Request request;
+    
+//     // Set frame_id
+//     request.frame_id = frame_id;
+    
+//     // Convert triangles
+//     const auto& triangles = mesh.triangles_;
+//     request.mesh.triangles.resize(triangles.size());
+//     for (size_t i = 0; i < triangles.size(); ++i) {
+//         request.mesh.triangles[i].vertex_indices[0] = triangles[i][0];
+//         request.mesh.triangles[i].vertex_indices[1] = triangles[i][1];
+//         request.mesh.triangles[i].vertex_indices[2] = triangles[i][2];
+//     }
+    
+//     // Convert vertices
+//     const auto& vertices = mesh.vertices_;
+//     request.mesh.vertices.resize(vertices.size());
+//     for (size_t i = 0; i < vertices.size(); ++i) {
+//         request.mesh.vertices[i].x = vertices[i].x();
+//         request.mesh.vertices[i].y = vertices[i].y();
+//         request.mesh.vertices[i].z = vertices[i].z();
+//     }
+    
+//     RCLCPP_DEBUG(this->get_logger(), "Created request with %zu vertices and %zu triangles",
+//                 request.mesh.vertices.size(), request.mesh.triangles.size());
+    
+//     return request;
+// }
+
+
+void Benchmarking3DCPP::pathCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg) 
 {
-
-}
-
-void Benchmarking3DCPP::loadScene()
-{
-
-}
-
-void Benchmarking3DCPP::loadCoveringModel()
-{
-    
-}
-
-
-nuc_msgs::srv::GetNuc::Request Benchmarking3DCPP::createNUCRequestFromMesh(
-    const open3d::geometry::TriangleMesh& mesh, 
-    const std::string& frame_id) {
-    
-    nuc_msgs::srv::GetNuc::Request request;
-    
-    // Set frame_id
-    request.frame_id = frame_id;
-    
-    // Convert triangles
-    const auto& triangles = mesh.triangles_;
-    request.mesh.triangles.resize(triangles.size());
-    for (size_t i = 0; i < triangles.size(); ++i) {
-        request.mesh.triangles[i].vertex_indices[0] = triangles[i][0];
-        request.mesh.triangles[i].vertex_indices[1] = triangles[i][1];
-        request.mesh.triangles[i].vertex_indices[2] = triangles[i][2];
-    }
-    
-    // Convert vertices
-    const auto& vertices = mesh.vertices_;
-    request.mesh.vertices.resize(vertices.size());
-    for (size_t i = 0; i < vertices.size(); ++i) {
-        request.mesh.vertices[i].x = vertices[i].x();
-        request.mesh.vertices[i].y = vertices[i].y();
-        request.mesh.vertices[i].z = vertices[i].z();
-    }
-    
-    RCLCPP_DEBUG(this->get_logger(), "Created request with %zu vertices and %zu triangles",
-                request.mesh.vertices.size(), request.mesh.triangles.size());
-    
-    return request;
-}
-
-
-void Benchmarking3DCPP::pathCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg) {
     std::vector<RobotWaypoint> path;
     path.reserve(msg->poses.size());
     
@@ -187,20 +238,24 @@ void Benchmarking3DCPP::pathCallback(const geometry_msgs::msg::PoseArray::Shared
         path.push_back(wp);
     }
     
-    // Calculate coverage
-    double max_dist = this->get_parameter("max_distance").as_double();
-    double max_angle = this->get_parameter("max_angle").as_double();
-    
-    auto result = calculator_->calculateCoverage(*the_scene_, path, max_dist, max_angle);
+    // Calculate coverage    
+    benchmarker_->calculateCoverage(curr_test_index_);
     
     RCLCPP_INFO(this->get_logger(), "Coverage: %.2f%% (%zu/%zu points)",
-            result.coverage_ratio * 100.0, 
-            result.covered_points, result.total_points);
+            benchmarker_->getTask(curr_test_index_).result.coverage_ratio * 100.0, 
+            benchmarker_->getTask(curr_test_index_).result.covered_points, 
+            benchmarker_->getTask(curr_test_index_).result.total_points);
             
-    publishVisualization(result);
+    publishVisualization(benchmarker_->getTask(curr_test_index_));
+
+    // We deal with the next test
+    curr_test_index_++;
 }
 
-void Benchmarking3DCPP::publishVisualization(const CoverageResult& result) {
+void Benchmarking3DCPP::publishVisualization(const Task& the_task) 
+{
+    const auto& result = the_task.result;
+
     visualization_msgs::msg::MarkerArray markers;
     
     // Create marker for covered points (green)
@@ -323,11 +378,19 @@ void Benchmarking3DCPP::publishVisualization(const CoverageResult& result) {
 
     // We publish the triangular mesh
     // Add mesh wireframe visualization
-    const auto& vertices = the_scene_->vertices_;
-    const auto& triangles = the_scene_->triangles_;
+    std::string scene_name = the_task.scene.name;
+    const std::shared_ptr<GeometryData> p_the_scene = scenes_[scene_name];
+    // If the scene is a mesh, we visualize it
+    const auto* mesh_data = static_cast<const TriangleMeshData*>(p_the_scene.get());
+
+
+    const auto& vertices = mesh_data->getData()->vertices_;
+    const auto& triangles = mesh_data->getData()->triangles_;
     visualization_msgs::msg::Marker mesh_marker;
     for (const auto& triangle : triangles) {
-        if (triangle[0] < vertices.size() && triangle[1] < vertices.size() && triangle[2] < vertices.size()) {
+        if (static_cast<size_t>(triangle[0]) < vertices.size() &&
+            static_cast<size_t>(triangle[1]) < vertices.size() && 
+            static_cast<size_t>(triangle[2]) < vertices.size()) {
             // Add three edges for each triangle
             geometry_msgs::msg::Point p1, p2, p3;
             p1.x = vertices[triangle[0]].x(); p1.y = vertices[triangle[0]].y(); p1.z = vertices[triangle[0]].z();
@@ -360,37 +423,4 @@ void Benchmarking3DCPP::publishVisualization(const CoverageResult& result) {
     scene_pub_->publish(mesh_marker);
 
 
-}
-
-std::string Benchmarking3DCPP::getFileExtension(const std::string& filename) {
-    std::filesystem::path filePath(filename);
-    return filePath.extension().string();
-}
-
-std::shared_ptr<open3d::geometry::TriangleMesh> Benchmarking3DCPP::loadSTLFile(const std::string& filename) {
-    auto mesh = std::make_shared<open3d::geometry::TriangleMesh>();
-    if(open3d::io::ReadTriangleMesh(filename, *mesh))
-    {
-        mesh->RemoveDuplicatedVertices();
-        mesh->RemoveDuplicatedTriangles();
-        mesh->RemoveDegenerateTriangles();
-        mesh->RemoveUnreferencedVertices();
-        if(!mesh->HasVertexNormals())
-        {
-            mesh->ComputeVertexNormals();
-        }
-        return mesh;
-    }
-
-    open3d::utility::LogError("Failed to read STL file: {}", filename);
-    return nullptr;
-}
-
-std::shared_ptr<open3d::geometry::PointCloud> Benchmarking3DCPP::loadPCDFile(const std::string& filename) {
-    auto cloud = std::make_shared<open3d::geometry::PointCloud>();
-    if (open3d::io::ReadPointCloud(filename, *cloud)) {
-        return cloud;
-    }
-    open3d::utility::LogError("Failed to read PCD file: {}", filename);
-    return nullptr;
 }

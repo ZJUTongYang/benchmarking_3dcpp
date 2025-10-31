@@ -1,53 +1,127 @@
-#include "surface_coverage/nuc_client.hpp"
-#include "surface_coverage/coverage_calculator.hpp"
+#include <benchmarking_3dcpp/alg/nuc.hpp>
+#include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <chrono>
 #include <thread>
 
 using namespace std::chrono_literals;
 
-NUCClient::NUCClient() : Node("nuc_client_node") {
+NUCAlgorithm::NUCAlgorithm(rclcpp::Node::SharedPtr node): 
+    node_(node) {
     // Create client
-    client_ = this->create_client<nuc_msgs::srv::GetNuc>("get_nuc");
+    client_ = node_->create_client<nuc_msgs::srv::GetNuc>("get_nuc");
     
     // Create publishers for visualization
-    path_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+    path_publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
         "coverage_path_visualization", 10);
-    path_publisher_raw_ = this->create_publisher<nav_msgs::msg::Path>(
+    path_publisher_raw_ = node_->create_publisher<nav_msgs::msg::Path>(
         "coverage_path", 10);
     
-    RCLCPP_INFO(this->get_logger(), "NUC Client initialized");
+    RCLCPP_INFO(node_->get_logger(), "NUC Client initialized");
 }
 
-bool NUCClient::requestCoveragePath(const std::string& mesh_file_path) {
+CoverageResult NUCAlgorithm::execute(std::shared_ptr<GeometryData> input)
+{
+    std::cout << "We start executing NUC" << std::endl;
+    CoverageResult result;
+std::cout << "Test 1" << std::endl;
+    if(!isValidInput(input))
+    {
+        std::cout << "Input data to the algorithm is not suitable" << std::endl;
+        return result;
+    }
+std::cout << "Test 2" << std::endl;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+        //     if(initialized_ && !algorithm_is_called_)
+        //     {
+        //         auto request = this->createNUCRequestFromMesh(*p_the_scene_, "world");
+        //         // std::cout << "We check the scene: " << std::endl;
+        //         // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
+        //         // {
+        //         //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
+        //         // }
+        //         // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
+        //         // {
+        //         //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
+        //         // }
+        //         auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
+        //         auto result_future = this->client_->async_send_request(request_ptr, 
+        //             std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
+        //     }
+        //     algorithm_is_called_ = true;
+
+    // auto request = createNUCRequestFromMesh()
+
+    nuc_msgs::srv::GetNuc::Request request;
+    request.frame_id = "not_in_use_to_remove";
+
+    std::shared_ptr<TriangleMeshData> p_tri_mesh_data = std::dynamic_pointer_cast<TriangleMeshData>(input);
+    std::shared_ptr<open3d::geometry::TriangleMesh> p_mesh = p_tri_mesh_data->getData();
+
+    const auto& triangles = p_mesh->triangles_;
+    request.mesh.triangles.resize(triangles.size());
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        request.mesh.triangles[i].vertex_indices[0] = triangles[i][0];
+        request.mesh.triangles[i].vertex_indices[1] = triangles[i][1];
+        request.mesh.triangles[i].vertex_indices[2] = triangles[i][2];
+    }
+
+    // Convert vertices
+    const auto& vertices = p_mesh->vertices_;
+    request.mesh.vertices.resize(vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        request.mesh.vertices[i].x = vertices[i].x();
+        request.mesh.vertices[i].y = vertices[i].y();
+        request.mesh.vertices[i].z = vertices[i].z();
+    }
+    
+    auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
+    auto result_future = client_->async_send_request(request_ptr);
+    
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
+    result.computation_time = duration.count();
+
+    std::cout << "Finish executing NUC with computation time " << result.computation_time << "s." << std::endl;
+
+    return result;
+
+}
+
+bool NUCAlgorithm::requestCoveragePath(const std::string& mesh_file_path) {
     // Wait for service to be available
     if (!client_->wait_for_service(5s)) {
-        RCLCPP_ERROR(this->get_logger(), "Service 'get_nuc' not available after waiting");
+        RCLCPP_ERROR(node_->get_logger(), "Service 'get_nuc' not available after waiting");
         return false;
     }
     
     // Load mesh
     auto mesh = loadMesh(mesh_file_path);
     if (!mesh) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load mesh: %s", mesh_file_path.c_str());
+        RCLCPP_ERROR(node_->get_logger(), "Failed to load mesh: %s", mesh_file_path.c_str());
         return false;
     }
     
-    RCLCPP_INFO(this->get_logger(), "Mesh loaded successfully: %s", mesh_file_path.c_str());
+    RCLCPP_INFO(node_->get_logger(), "Mesh loaded successfully: %s", mesh_file_path.c_str());
     
     // Create request
-    auto request = createRequestFromMesh(*mesh);
+    auto request = std::make_shared<nuc_msgs::srv::GetNuc::Request>();
+    *request = createRequestFromMesh(*mesh);
     
     // Send request
     auto future = client_->async_send_request(request);
     
-    RCLCPP_INFO(this->get_logger(), "Sent coverage path request to NUC service");
+    RCLCPP_INFO(node_->get_logger(), "Sent coverage path request to NUC service");
     
     // Wait for result
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future) ==
+    if (rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future) ==
         rclcpp::FutureReturnCode::SUCCESS) {
         
         auto response = future.get();
-        RCLCPP_INFO(this->get_logger(), "Received coverage path with %zu waypoints", 
+        RCLCPP_INFO(node_->get_logger(), "Received coverage path with %zu waypoints", 
                    response->coverage.poses.size());
         
         // Publish visualization
@@ -58,15 +132,16 @@ bool NUCClient::requestCoveragePath(const std::string& mesh_file_path) {
         
         return true;
     } else {
-        RCLCPP_ERROR(this->get_logger(), "Failed to call service get_nuc");
+        RCLCPP_ERROR(node_->get_logger(), "Failed to call service get_nuc");
         return false;
     }
+    return true;
 }
 
-std::shared_ptr<open3d::geometry::TriangleMesh> NUCClient::loadMesh(const std::string& file_path) {
+std::shared_ptr<open3d::geometry::TriangleMesh> NUCAlgorithm::loadMesh(const std::string& file_path) {
     auto mesh = open3d::io::CreateMeshFromFile(file_path);
     if (!mesh) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load mesh from: %s", file_path.c_str());
+        RCLCPP_ERROR(node_->get_logger(), "Failed to load mesh from: %s", file_path.c_str());
         return nullptr;
     }
     
@@ -75,13 +150,13 @@ std::shared_ptr<open3d::geometry::TriangleMesh> NUCClient::loadMesh(const std::s
         mesh->ComputeVertexNormals();
     }
     
-    RCLCPP_INFO(this->get_logger(), "Mesh loaded: %zu vertices, %zu triangles", 
+    RCLCPP_INFO(node_->get_logger(), "Mesh loaded: %zu vertices, %zu triangles", 
                mesh->vertices_.size(), mesh->triangles_.size());
     
     return mesh;
 }
 
-nuc_msgs::srv::GetNuc::Request NUCClient::createRequestFromMesh(
+nuc_msgs::srv::GetNuc::Request NUCAlgorithm::createRequestFromMesh(
     const open3d::geometry::TriangleMesh& mesh, 
     const std::string& frame_id) {
     
@@ -108,13 +183,13 @@ nuc_msgs::srv::GetNuc::Request NUCClient::createRequestFromMesh(
         request.mesh.vertices[i].z = vertices[i].z();
     }
     
-    RCLCPP_DEBUG(this->get_logger(), "Created request with %zu vertices and %zu triangles",
+    RCLCPP_DEBUG(node_->get_logger(), "Created request with %zu vertices and %zu triangles",
                 request.mesh.vertices.size(), request.mesh.triangles.size());
     
     return request;
 }
 
-void NUCClient::publishVisualization(const nav_msgs::msg::Path& path) {
+void NUCAlgorithm::publishVisualization(const nav_msgs::msg::Path& path) {
     visualization_msgs::msg::MarkerArray markers;
     
     // Path line marker
@@ -160,6 +235,6 @@ void NUCClient::publishVisualization(const nav_msgs::msg::Path& path) {
     markers.markers.push_back(waypoints);
     
     path_publisher_->publish(markers);
-    RCLCPP_INFO(this->get_logger(), "Published path visualization with %zu waypoints", 
+    RCLCPP_INFO(node_->get_logger(), "Published path visualization with %zu waypoints", 
                path.poses.size());
 }

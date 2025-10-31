@@ -3,6 +3,10 @@ project(benchmarking_3dcpp)
 
 set(CMAKE_CXX_STANDARD 23)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -19,7 +23,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(nuc_msgs REQUIRED)
-find_package(nlohmann_json REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 
 find_package(Open3D REQUIRED)
@@ -83,7 +87,8 @@ add_executable(benchmarking_3dcpp_node
   src/benchmarking_3dcpp_node.cpp
   src/benchmarking_3dcpp.cpp
   src/eval/surface_sampler.cpp
-  src/eval/coverage_evaluator.cpp)
+  src/eval/coverage_evaluator.cpp
+  src/alg/nuc.cpp)
 
 
 
@@ -92,6 +97,7 @@ add_executable(benchmarking_3dcpp_node
 target_link_libraries(benchmarking_3dcpp_node
     cuda_kernels
     ${TBB_LIBRARIES}
+    yaml-cpp
 )
 
 
@@ -104,7 +110,6 @@ ament_target_dependencies(benchmarking_3dcpp_node
   tf2_eigen
   nuc_msgs
   Open3D
-  nlohmann_json
   spdlog
 )
 

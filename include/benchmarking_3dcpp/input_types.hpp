@@ -36,6 +36,11 @@ public:
 
     bool isValid() const override { return point_cloud_ != nullptr && !point_cloud_->points_.empty(); }
 
+    std::shared_ptr<open3d::geometry::PointCloud> getData() const
+    {
+        return point_cloud_;
+    }
+
 private: 
     std::shared_ptr<open3d::geometry::PointCloud> point_cloud_;
 };
@@ -50,6 +55,11 @@ public:
 
     bool isValid() const override { return mesh_ != nullptr && !mesh_->vertices_.empty(); }
 
+    std::shared_ptr<open3d::geometry::TriangleMesh> getData() const
+    {
+        return mesh_;
+    }
+
 private:
     std::shared_ptr<open3d::geometry::TriangleMesh> mesh_;
 };
@@ -57,28 +67,41 @@ private:
 class GeometryLoader
 {
 public: 
-    using LoaderFunction = std::function<std::unique_ptr<GeometryData>(const std::string&)>;
+    using LoaderFunction = std::function<std::shared_ptr<GeometryData>(const std::string&)>;
 
     GeometryLoader()
     {
+        std::cout << "We init geometry loader" << std::endl;
+
         initLoaders();
+        std::cout << "We finish init geometry loader" << std::endl;
     }
 
-    std::unique_ptr<GeometryData> load(const std::string& filename)
+    std::shared_ptr<GeometryData> load(const std::string& filename)
     {
         std::string extension = getFileExtension(filename);
+        std::cout << "File extension: " << extension << std::endl;
+
+        std::cout << "We check loaders size: " << loaders_.size() << std::endl;
+        for(auto & loader: loaders_)
+        {
+            std::cout << loader.first << std::endl;
+        }
 
         auto it = loaders_.find(extension);
+        std::cout << "test here" << std::endl;
         if(it != loaders_.end())
         {
+            std::cout << "We find proper loader" << std::endl;
             return it->second(filename);
         }
 
-        open3d::utility::LogError("Unsupported file format: {}", filename);
+        // open3d::utility::LogError("Unsupported file format: {}", filename);
+        std::cout << "Unsupport file format: " << filename << std::endl;
         return nullptr;
     }
 
-    std::unique_ptr<GeometryData> loadGeometry(const std::string& filename)
+    std::shared_ptr<GeometryData> loadGeometry(const std::string& filename)
     {
         std::string extension = getFileExtension(filename);
 
@@ -88,10 +111,16 @@ public:
             auto geometry = it->second(filename);
             if(geometry && geometry->isValid())
             {
-                open3d::utility::LogInfo("Loaded geometry: {} ({})", 
-                    filename, geometry->getType());
+                // open3d::utility::LogInfo("Loaded geometry: {} ({})", 
+                //     filename, geometry->getType());
+                std::cout << "Loaded geometry: " << filename << std::endl;
+                return geometry;
             }
         }
+
+        // open3d::utility::LogError("Unsupported file format: {}", filename);
+        std::cout << "Unsupport file format: " << filename << std::endl;
+        return nullptr;
     }
 
 
@@ -99,9 +128,9 @@ public:
     {
         loaders_[extension] = std::move(loader);
     }
+    std::unordered_map<std::string, LoaderFunction> loaders_;
 
 private: 
-    std::unordered_map<std::string, LoaderFunction> loaders_;
 
     std::string getFileExtension(const std::string& filename)
     {
@@ -119,8 +148,8 @@ private:
 
     void initLoaders()
     {
-
-        registerLoader("pcd", [this](const std::string& filename)->std::unique_ptr<GeometryData>{
+        std::cout << "loader for pcd" << std::endl;
+        registerLoader("pcd", [this](const std::string& filename)->std::shared_ptr<GeometryData>{
             auto result = this->loadPCDFile(filename);
             if(result.has_value())
             {
@@ -129,7 +158,8 @@ private:
             return nullptr;
         });
 
-        registerLoader("stl", [this](const std::string& filename)->std::unique_ptr<GeometryData>{
+        std::cout << "loader for stl" << std::endl;
+        registerLoader("stl", [this](const std::string& filename)->std::shared_ptr<GeometryData>{
             auto result = this->loadSTLFile(filename);
             if(result.has_value())
             {
@@ -138,9 +168,6 @@ private:
             return nullptr;            
         });
     }
-
-
-
 
     std::optional<std::shared_ptr<open3d::geometry::TriangleMesh> >
     loadSTLFile(const std::string& filename) 
@@ -214,6 +241,5 @@ private:
             return std::nullopt;
         } // try
     }
-
 
 };

@@ -1,0 +1,22 @@
+# Main configuration for the benchmarking platform
+version: "1.0"
+description: "3D coverage path planning benchmarking configuration"
+point_density: 20000.0
+use_cuda: true
+
+# List of available robot models
+robots: 
+  - name: "circular_tool"
+    type: "cylindrical"
+    radius: 0.05
+    depth: 0.01
+
+# List of scenes to test on
+scenes: 
+  - name: "remeshed_saddle"
+    filename: "remeshed_saddle.stl"
+    frame_id: "remeshed_saddle"
+
+# List of algorithms
+algorithms: 
+  - name: "nuc"

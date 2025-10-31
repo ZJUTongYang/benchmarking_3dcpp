@@ -6,15 +6,29 @@
 #include <open3d/io/TriangleMeshIO.h>
 #include <memory>
 #include <string>
+#include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
+#include <benchmarking_3dcpp/types.hpp>
 
-class NUCClient : public rclcpp::Node {
+class NUCAlgorithm : public CoverageAlgorithm {
 public:
-    NUCClient();
-    
-    bool requestCoveragePath(const std::string& mesh_file_path);
-    void publishVisualization(const nav_msgs::msg::Path& path);
+    explicit NUCAlgorithm(rclcpp::Node::SharedPtr node);
+
+    std::string getName() const override { return "NUC";}
+
+    std::string getDescription() const override { return "Input: a uniform mesh. Output: a coverage skeleton";}
+
+    std::vector<GeometryType> getSupportedInputTypes() const override { return {GeometryType::TriangleMesh};}
+
+    CoverageResult execute(std::shared_ptr<GeometryData> input) override;
     
 private:
+    rclcpp::Node::SharedPtr node_;
+    
+    
+
+    bool requestCoveragePath(const std::string& mesh_file_path);
+    void publishVisualization(const nav_msgs::msg::Path& path);
+
     rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedPtr client_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr path_publisher_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_publisher_raw_;
