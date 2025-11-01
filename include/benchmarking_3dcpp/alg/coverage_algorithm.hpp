@@ -6,8 +6,10 @@
 class CoverageAlgorithm
 {
 public: 
-
-    // virtual ~CoverageAlgorithm() = default;
+    CoverageAlgorithm()
+    {
+        std::shared_ptr<CoverageResult> result = nullptr;
+    }
 
     virtual std::string getName() const = 0;
 
@@ -15,19 +17,34 @@ public:
 
     virtual std::vector<GeometryType> getSupportedInputTypes() const = 0;
 
-    virtual CoverageResult execute(std::shared_ptr<GeometryData> input) = 0;
+    virtual void execute(std::shared_ptr<GeometryData> input) = 0;
 
     virtual bool isValidInput(std::shared_ptr<GeometryData> input) const
     {
-        // std::cout << "test 1.1" << std::endl;
         auto support_types = getSupportedInputTypes();
-        // std::cout << "test 1.2" << std::endl;
         auto actual_type = input->getType();
-        // std::cout << "test 1.3" << std::endl;
         return std::find(support_types.begin(), support_types.end(), actual_type) != support_types.end();
     }
 
+    // For any algorithm, the coverage result is not get immediately. 
+    // So they will save the solution later using this function 
+    void setSolution(std::shared_ptr<CoverageResult> result)
+    {
+        std::lock_guard<std::mutex> lock(result_mutex_);
+        result_ = result;
+    }
+    
+    std::shared_ptr<CoverageResult> getSolution()
+    {
+        std::lock_guard<std::mutex> lock(result_mutex_);
+        return result_;
+    }
+
 public:
-    // virtual std::vector<Eigen::Matrix4d> getResultPath() = 0;
-    // virtual bool isCovered() = 0;
+    std::chrono::_V2::system_clock::time_point start_time_;
+    std::chrono::_V2::system_clock::time_point end_time_;
+
+    std::mutex result_mutex_;
+    std::shared_ptr<CoverageResult> result_;
+
 };

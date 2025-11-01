@@ -9,7 +9,8 @@
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
 #include <benchmarking_3dcpp/types.hpp>
 
-class NUCAlgorithm : public CoverageAlgorithm {
+class NUCAlgorithm : public CoverageAlgorithm 
+{
 public:
     explicit NUCAlgorithm(rclcpp::Node::SharedPtr node);
 
@@ -19,12 +20,12 @@ public:
 
     std::vector<GeometryType> getSupportedInputTypes() const override { return {GeometryType::TriangleMesh};}
 
-    CoverageResult execute(std::shared_ptr<GeometryData> input) override;
+    void execute(std::shared_ptr<GeometryData> input) override;
     
 private:
     rclcpp::Node::SharedPtr node_;
     
-    
+    void resultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future);
 
     bool requestCoveragePath(const std::string& mesh_file_path);
     void publishVisualization(const nav_msgs::msg::Path& path);

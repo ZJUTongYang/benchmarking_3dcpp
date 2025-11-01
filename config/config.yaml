@@ -19,4 +19,4 @@ scenes:
 
 # List of algorithms
 algorithms: 
-  - name: "nuc"
+  - name: "Yang2023Template"

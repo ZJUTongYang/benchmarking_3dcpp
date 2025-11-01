@@ -268,6 +268,6 @@ void CoverageEvaluator::registerATest(int index, const std::string& robot_name, 
         new_task.algorithm.name = algorithm_name;
 
         tasks_.emplace_back(new_task);
-
+        std::cout << "We create task " << index << ", robot: " << new_task.robot.name << ", scene: " << new_task.scene.name  << ", algorithm: " << new_task.algorithm.name << std::endl;
     }
     

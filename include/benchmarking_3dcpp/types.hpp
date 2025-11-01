@@ -4,6 +4,7 @@
 #include <array>
 #include <open3d/geometry/TriangleMesh.h>
 #include <chrono>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 
 struct RobotConfig
 {
@@ -35,6 +36,13 @@ struct RobotWaypoint {
     Eigen::Quaterniond orientation;
     double coverage_radius;
     double timestamp;
+
+    RobotWaypoint(){}
+    RobotWaypoint(const geometry_msgs::msg::PoseStamped& pose)
+    {
+        position = Eigen::Vector3d(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+        orientation = Eigen::Quaterniond(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+    }
 };
 
 struct CoverageResult 
@@ -48,5 +56,16 @@ struct CoverageResult
     size_t total_points;
     size_t covered_points;
     std::vector<SurfacePoint> surface_points;
+
+    void reset()
+    {
+        robot_path.clear();
+        coverage_ratio = 0.0;
+        coverage_mask.clear();
+        computation_time = std::numeric_limits<double>::infinity();
+        total_points = 0;
+        covered_points = 0;
+        surface_points.clear();
+    }
 };
 

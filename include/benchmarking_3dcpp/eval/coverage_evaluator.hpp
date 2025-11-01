@@ -45,8 +45,17 @@ public:
         return tasks_[test_id];
     }
 
-private:
+    void setSolution(int test_id, std::shared_ptr<CoverageResult> solution)
+    {
+        tasks_[test_id].result = *solution;
+    }
 
+    int getTaskNum() const
+    {
+        return tasks_.size();
+    }
+
+private:
     std::vector<Task> tasks_;
 
     bool use_cuda_;

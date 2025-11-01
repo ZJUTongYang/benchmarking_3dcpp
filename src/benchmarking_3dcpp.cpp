@@ -16,16 +16,13 @@ Benchmarking3DCPP::Benchmarking3DCPP():
     initialized_ = false;
     geometryLoader_ = std::make_unique<GeometryLoader>();
 
-    std::cout << "test 1" << std::endl;
     this->declare_parameter("config_filename", "NOT_SET");
-    std::string config_filename_ = this->get_parameter("config_filename").as_string();
+    config_filename_ = this->get_parameter("config_filename").as_string();
     if(config_filename_ == "NOT_SET")
     {
         RCLCPP_ERROR(this->get_logger(), "Config filename not set");
         return;
     }
-    YAML::Node config = YAML::LoadFile(config_filename_);
-    std::cout << "test 2" << std::endl;
 
     this->declare_parameter("max_angle", M_PI);
 
@@ -45,10 +42,18 @@ Benchmarking3DCPP::Benchmarking3DCPP():
     scene_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "scene_visualization", 10
     );
-    std::cout << "test 3" << std::endl;
         
-    // Create client
-    client_ = this->create_client<nuc_msgs::srv::GetNuc>("get_nuc");
+    timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(1000),
+        std::bind(&Benchmarking3DCPP::runSingleTest, this));
+}
+
+void Benchmarking3DCPP::initialize()
+{
+    YAML::Node config = YAML::LoadFile(config_filename_);
+
+    test_is_running_= false; // A marker indicating that whether we should wait for the result of the "current task"
+    curr_test_index_ = 0;
 
     // The benchmarking platform loads all scenes and only share pointers to the evaluator
     scenes_.clear();
@@ -67,35 +72,46 @@ Benchmarking3DCPP::Benchmarking3DCPP():
         }
         scenes_[scene_name] = p_scene;
     }
-    std::cout << "test 4" << std::endl;
 
-    // p_the_scene_ = loadGeometryFile(scene_filename_);
+    robots_.clear();
+    for(const auto& robot : config["robots"])
+    {
+        std::string robot_name = robot["name"].as<std::string>();
+        auto p_robot = std::make_shared<RobotModel>(robot_name);
+        robots_[robot_name] = p_robot;
+    }
 
-    // if(p_the_scene_ == nullptr)
-    //     return ;
+    algorithms_.clear();
+    for(const auto& algorithm : config["algorithms"])
+    {
+        std::string algorithm_name = algorithm["name"].as<std::string>();
+
+        std::shared_ptr<CoverageAlgorithm> p_algorithm;
+        if(algorithm_name == "Yang2023Template")
+        {
+            p_algorithm = std::make_shared<NUCAlgorithm>(this->shared_from_this());
+        }
+        else
+        {
+            std::cout << "YT: error, we do not support this algorithm: " << algorithm_name << std::endl;
+            return ;
+        }
+
+        algorithms_[algorithm_name] = p_algorithm;
+    }
 
     // Initialize coverage calculator
-    // bool use_cuda = this->get_parameter("use_cuda").as_bool();
     // double point_density = this->get_parameter("point_density").as_double();
     bool use_cuda = config["use_cuda"].as<bool>();
     double point_density = config["point_density"].as<double>();
     benchmarker_ = std::make_unique<CoverageEvaluator>(use_cuda, point_density);
-    std::cout << "test 5" << std::endl;
 
     int num_robots = config["robots"].size();
     int num_scenes = config["scenes"].size();
     int num_algorithms = config["algorithms"].size();
+    
     scheduleAllTests(num_robots, num_scenes, num_algorithms, config);
-    std::cout << "test 6" << std::endl;
 
-    test_is_running_= false;
-    curr_test_index_ = 0;
-
-    timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(1000),
-        std::bind(&Benchmarking3DCPP::runSingleTest, this));
-    std::cout << "test 7" << std::endl;
-        
     initialized_ = true;
 }
 
@@ -120,8 +136,18 @@ void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num
 
 void Benchmarking3DCPP::runSingleTest()
 {
-    if(!initialized_ || test_is_running_)
+    if(!initialized_)
+    {
+        initialize();
         return ;
+    }
+
+    if(curr_test_index_ >= benchmarker_->getTaskNum())
+    {
+        // All tests have finished
+        timer_->cancel();  
+        return ;
+    }
 
     // we perform the i-th test
     const RobotConfig& the_robot_config = benchmarker_->getTask(curr_test_index_).robot;
@@ -130,96 +156,31 @@ void Benchmarking3DCPP::runSingleTest()
 
     const AlgorithmConfig& the_algorithm_config = benchmarker_->getTask(curr_test_index_).algorithm;
 
-    std::shared_ptr<CoverageAlgorithm> p_algorithm;
-    if(the_algorithm_config.name == "nuc")
+    std::shared_ptr<CoverageAlgorithm> p_algorithm = algorithms_[the_algorithm_config.name];
+
+    if(!test_is_running_)
     {
-        p_algorithm = std::make_shared<NUCAlgorithm>(this->shared_from_this());
+        p_algorithm->execute(p_the_surface);
+        test_is_running_ = true;
+        return;
     }
     else
     {
-        std::cout << "YT: error, we do not support this algorithm: " << the_algorithm_config.name << std::endl;
-        return ;
+        // After we call "execute", the algorithm may run for a long time and terminated with a callback, so we are going to wait for the callback to finish
+
+        if(p_algorithm->getSolution() == nullptr)
+        {
+            // We still need to wait a bit longer
+            return ;
+        }
+
+        // We copy the result to the evaluator
+        std::shared_ptr<CoverageResult> p_result = p_algorithm->getSolution();
+        benchmarker_->setSolution(curr_test_index_, p_result);
+        test_is_running_ = false;
+        curr_test_index_++;
     }
-    benchmarker_->getTaskNonConst(curr_test_index_).result = p_algorithm->execute(p_the_surface);
-
-
-
-// [this](){
-        //     if(initialized_ && !algorithm_is_called_)
-        //     {
-        //         auto request = this->createNUCRequestFromMesh(*p_the_scene_, "world");
-        //         // std::cout << "We check the scene: " << std::endl;
-        //         // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
-        //         // {
-        //         //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
-        //         // }
-        //         // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
-        //         // {
-        //         //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
-        //         // }
-        //         auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
-        //         auto result_future = this->client_->async_send_request(request_ptr, 
-        //             std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
-        //     }
-        //     algorithm_is_called_ = true;
-        // }
-    // );
 }
-
-void Benchmarking3DCPP::nucResultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future)
-{
-    auto response = future.get();
-    nav_msgs::msg::Path path = response->coverage;
-    std::cout << "We got response from nuc_ros2 with size: " << path.poses.size() << std::endl;
-    // for(auto iter = path.poses.begin(); iter != path.poses.end(); iter++)
-    // {
-    //     std::cout << iter->pose.position.x << ", " << iter->pose.position.y << std::endl;
-    // }
-
-    geometry_msgs::msg::PoseArray path_array;
-    path_array.header = path.header;
-    for(auto iter = path.poses.begin(); iter != path.poses.end(); iter++)
-    {
-        path_array.poses.push_back(iter->pose);
-    }
-    pathCallback(std::make_shared<geometry_msgs::msg::PoseArray>(path_array));
-
-}
-
-
-// nuc_msgs::srv::GetNuc::Request Benchmarking3DCPP::createNUCRequestFromMesh(
-//     const open3d::geometry::TriangleMesh& mesh, 
-//     const std::string& frame_id) {
-    
-//     nuc_msgs::srv::GetNuc::Request request;
-    
-//     // Set frame_id
-//     request.frame_id = frame_id;
-    
-//     // Convert triangles
-//     const auto& triangles = mesh.triangles_;
-//     request.mesh.triangles.resize(triangles.size());
-//     for (size_t i = 0; i < triangles.size(); ++i) {
-//         request.mesh.triangles[i].vertex_indices[0] = triangles[i][0];
-//         request.mesh.triangles[i].vertex_indices[1] = triangles[i][1];
-//         request.mesh.triangles[i].vertex_indices[2] = triangles[i][2];
-//     }
-    
-//     // Convert vertices
-//     const auto& vertices = mesh.vertices_;
-//     request.mesh.vertices.resize(vertices.size());
-//     for (size_t i = 0; i < vertices.size(); ++i) {
-//         request.mesh.vertices[i].x = vertices[i].x();
-//         request.mesh.vertices[i].y = vertices[i].y();
-//         request.mesh.vertices[i].z = vertices[i].z();
-//     }
-    
-//     RCLCPP_DEBUG(this->get_logger(), "Created request with %zu vertices and %zu triangles",
-//                 request.mesh.vertices.size(), request.mesh.triangles.size());
-    
-//     return request;
-// }
-
 
 void Benchmarking3DCPP::pathCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg) 
 {

@@ -19,39 +19,17 @@ NUCAlgorithm::NUCAlgorithm(rclcpp::Node::SharedPtr node):
     RCLCPP_INFO(node_->get_logger(), "NUC Client initialized");
 }
 
-CoverageResult NUCAlgorithm::execute(std::shared_ptr<GeometryData> input)
+void NUCAlgorithm::execute(std::shared_ptr<GeometryData> input)
 {
     std::cout << "We start executing NUC" << std::endl;
-    CoverageResult result;
-std::cout << "Test 1" << std::endl;
     if(!isValidInput(input))
     {
         std::cout << "Input data to the algorithm is not suitable" << std::endl;
-        return result;
+        // return result;
+        return ;
     }
-std::cout << "Test 2" << std::endl;
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-        //     if(initialized_ && !algorithm_is_called_)
-        //     {
-        //         auto request = this->createNUCRequestFromMesh(*p_the_scene_, "world");
-        //         // std::cout << "We check the scene: " << std::endl;
-        //         // for(auto iter = request.mesh.triangles.begin(); iter != request.mesh.triangles.end(); ++iter)
-        //         // {
-        //         //     std::cout << iter->vertex_indices[0] << ", " << iter->vertex_indices[1] << ", " << iter->vertex_indices[2] << std::endl;
-        //         // }
-        //         // for(auto iter = request.mesh.vertices.begin(); iter != request.mesh.vertices.end(); ++iter)
-        //         // {
-        //         //     std::cout << iter->x << ", " << iter->y << ", " << iter->z << std::endl;
-        //         // }
-        //         auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
-        //         auto result_future = this->client_->async_send_request(request_ptr, 
-        //             std::bind(&Benchmarking3DCPP::nucResultCallback, this, std::placeholders::_1));
-        //     }
-        //     algorithm_is_called_ = true;
-
-    // auto request = createNUCRequestFromMesh()
+    start_time_ = std::chrono::high_resolution_clock::now();
 
     nuc_msgs::srv::GetNuc::Request request;
     request.frame_id = "not_in_use_to_remove";
@@ -77,21 +55,39 @@ std::cout << "Test 2" << std::endl;
     }
     
     auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
-    auto result_future = client_->async_send_request(request_ptr);
-    
 
-    auto end_time = std::chrono::high_resolution_clock::now();
+    // We don't know when the service will be ready, so we have to set up a callback function
 
-    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
-    result.computation_time = duration.count();
-
-    std::cout << "Finish executing NUC with computation time " << result.computation_time << "s." << std::endl;
-
-    return result;
+    auto result_future = client_->async_send_request(request_ptr, 
+        std::bind(&NUCAlgorithm::resultCallback, this, std::placeholders::_1));
 
 }
 
-bool NUCAlgorithm::requestCoveragePath(const std::string& mesh_file_path) {
+// void NUCAlgorithm::resultCallback(std::shared_future<nuc_msgs::srv::GetNuc::Response::SharedPtr> future)
+void NUCAlgorithm::resultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future)
+{
+    std::cout << "the platform enters callback" << std::endl;
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time_);
+
+    auto response = future.get();
+
+    auto result = std::make_shared<CoverageResult>();
+    for(auto iter = response->coverage.poses.begin(); iter != response->coverage.poses.end(); ++iter)
+    {
+        result->robot_path.emplace_back(RobotWaypoint(*iter));
+    }
+
+    result->computation_time = duration.count();
+    setSolution(result);
+
+    std::cout << "Finish executing NUC with computation time " << result_->computation_time << "s." << std::endl;
+
+}
+
+bool NUCAlgorithm::requestCoveragePath(const std::string& mesh_file_path) 
+{
     // Wait for service to be available
     if (!client_->wait_for_service(5s)) {
         RCLCPP_ERROR(node_->get_logger(), "Service 'get_nuc' not available after waiting");
@@ -138,7 +134,8 @@ bool NUCAlgorithm::requestCoveragePath(const std::string& mesh_file_path) {
     return true;
 }
 
-std::shared_ptr<open3d::geometry::TriangleMesh> NUCAlgorithm::loadMesh(const std::string& file_path) {
+std::shared_ptr<open3d::geometry::TriangleMesh> NUCAlgorithm::loadMesh(const std::string& file_path) 
+{
     auto mesh = open3d::io::CreateMeshFromFile(file_path);
     if (!mesh) {
         RCLCPP_ERROR(node_->get_logger(), "Failed to load mesh from: %s", file_path.c_str());
