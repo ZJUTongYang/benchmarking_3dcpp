@@ -13,24 +13,20 @@
 #include <optional>
 #include <benchmarking_3dcpp/input_types.hpp>
 #include <yaml-cpp/yaml.h>
+#include <benchmarking_3dcpp/scene.hpp>
 
 class Benchmarking3DCPP: public rclcpp::Node
 {
 public:
     Benchmarking3DCPP();
 
-    nuc_msgs::srv::GetNuc::Request createNUCRequestFromMesh(
-        const open3d::geometry::TriangleMesh& mesh, 
-        const std::string& frame_id);
-
 private:
     void initialize();
 
-    void pathCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg);
-    void publishVisualization(const Task& result);
-
     void scheduleAllTests(int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config);
     void runSingleTest();
+
+    void saveEvalToFile(int task_id);
 
     std::shared_ptr<GeometryData> loadGeometryFile(const std::string& filename)
     {
@@ -38,23 +34,25 @@ private:
     }
 
     std::unordered_map<std::string, std::shared_ptr<RobotModel> > robots_;
-    std::unordered_map<std::string, std::shared_ptr<GeometryData> > scenes_;
+    std::unordered_map<std::string, std::shared_ptr<Scene> > scenes_;
     std::unordered_map<std::string, std::shared_ptr<CoverageAlgorithm> > algorithms_;
 
     rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr path_sub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr coverage_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr scene_pub_;
-
-    std::unique_ptr<CoverageEvaluator> benchmarker_;
-
+    
     bool test_is_running_;
     int curr_test_index_;
     bool initialized_;
 
     rclcpp::TimerBase::SharedPtr timer_;
+    
+    std::unique_ptr<CoverageEvaluator> benchmarker_;
 
     std::unique_ptr<GeometryLoader> geometryLoader_;
-
+    
+    std::unique_ptr<SurfaceSampler> surface_sampler_;
+    
     std::string config_filename_;
 };

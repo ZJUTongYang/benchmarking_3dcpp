@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <execution>
 #include <rclcpp/rclcpp.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 CoverageEvaluator::CoverageEvaluator(bool use_cuda, double point_density) 
     : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>(point_density)) {
@@ -20,42 +21,15 @@ CoverageEvaluator::~CoverageEvaluator() {
 
 void CoverageEvaluator::calculateCoverage(int current_test_id)
 {
+
+}
+
+void CoverageEvaluator::eval(int current_test_id, 
+    const std::vector<SurfacePoint>& surface_points)
+{
     std::shared_ptr<GeometryData> surface = tasks_[current_test_id].p_surface;
     const std::vector<RobotWaypoint>& path = tasks_[current_test_id].result.robot_path;
     double max_distance = tasks_[current_test_id].robot.tool_radius;
-
-    std::vector<SurfacePoint> surface_points;
-    if(surface->getType() == GeometryType::TriangleMesh)
-    {
-        // Sample surface points
-        const auto* mesh_data = static_cast<const TriangleMeshData*>(surface.get());
-
-        if(!mesh_data->isValid())
-        {
-            tasks_[current_test_id].result = {};
-            return;
-        }
-
-        surface_points = sampler_->sampleUniformly(*(mesh_data->getData()));
-        // surface_points = sampler_->sampleUniformly(*mesh.getData());
-    }
-    else if(surface->getType() == GeometryType::PointCloud)
-    {
-        // We directly use the point cloud as the surface points
-        std::cout << "We haven't implemented this branch" << std::endl;
-        const auto* cloud_data = static_cast<const PointCloudData*>(surface.get());
-
-        if(!cloud_data->isValid())
-        {
-            tasks_[current_test_id].result = {};
-            return;
-        }
-
-        surface_points = sampler_->sampleUniformly(*(cloud_data->getData()));
-
-            tasks_[current_test_id].result = {};
-            return;
-    }
     
     rclcpp::Time t1 = rclcpp::Clock().now();
     // Calculate coverage
@@ -83,8 +57,9 @@ void CoverageEvaluator::calculateCoverage(int current_test_id)
     tasks_[current_test_id].result.coverage_mask = coverage_mask;
     tasks_[current_test_id].result.total_points = surface_points.size();
     tasks_[current_test_id].result.covered_points = covered_count;
-    tasks_[current_test_id].result.surface_points = surface_points;
+    // tasks_[current_test_id].result.surface_points = surface_points;
 }
+
 
 std::vector<bool> CoverageEvaluator::calculateCoverageCPU(
     const std::vector<SurfacePoint>& surface_points,
@@ -223,7 +198,7 @@ std::vector<bool> CoverageEvaluator::calculateCoverageCUDA(
 
 void CoverageEvaluator::registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
     const std::string& algorithm_name, const YAML::Node& config, 
-    const std::unordered_map<std::string, std::shared_ptr<GeometryData> >& scenes)
+    const std::unordered_map<std::string, std::shared_ptr<Scene> >& scenes)
     {
         Task new_task;
         new_task.task_id = index;
@@ -263,7 +238,7 @@ void CoverageEvaluator::registerATest(int index, const std::string& robot_name, 
         }
 
         // Based on the scene name, we create a pointer to the surface
-        new_task.p_surface = scenes.at(scene_name);
+        new_task.p_surface = scenes.at(scene_name)->scene_object_;
 
         new_task.algorithm.name = algorithm_name;
 

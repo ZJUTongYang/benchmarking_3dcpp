@@ -55,7 +55,6 @@ struct CoverageResult
     // These are sampled dense surface points, for evaluation only. Not from the raw point cloud
     size_t total_points;
     size_t covered_points;
-    std::vector<SurfacePoint> surface_points;
 
     void reset()
     {
@@ -65,7 +64,6 @@ struct CoverageResult
         computation_time = std::numeric_limits<double>::infinity();
         total_points = 0;
         covered_points = 0;
-        surface_points.clear();
     }
 };
 

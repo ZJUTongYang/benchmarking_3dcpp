@@ -1,5 +1,6 @@
 #pragma once
 #include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/input_types.hpp>
 #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <random>
@@ -7,6 +8,8 @@
 class SurfaceSampler {
 public:
     SurfaceSampler(double point_density = 1000.0); // points per unit area
+
+    std::shared_ptr<std::vector<SurfacePoint> > prepareSurfacePoints(std::shared_ptr<GeometryData> p_scene_object);
     
     std::vector<SurfacePoint> sampleUniformly(
         const open3d::geometry::TriangleMesh& mesh);

@@ -7,6 +7,9 @@
 #include <benchmarking_3dcpp/input_types.hpp>
 #include <yaml-cpp/yaml.h>
 #include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/scene.hpp>
+#include <H5Cpp.h>
+#include <benchmarking_3dcpp/viz/benchmarking_viz.hpp>
 
 struct Task
 {
@@ -24,11 +27,14 @@ public:
     CoverageEvaluator(bool use_cuda = true, double point_density=1000);
     ~CoverageEvaluator();
     
+    void eval(int current_test_id, 
+        const std::vector<SurfacePoint>& surface_points);
+
     void calculateCoverage(int current_test_id);
 
     void registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
         const std::string& algorithm_name, const YAML::Node& config, 
-        const std::unordered_map<std::string, std::shared_ptr<GeometryData> >& scenes);
+        const std::unordered_map<std::string, std::shared_ptr<Scene> >& scenes);
 
     int getCoverageRadius(int current_test_id)
     {
@@ -56,6 +62,7 @@ public:
     }
 
 private:
+
     std::vector<Task> tasks_;
 
     bool use_cuda_;

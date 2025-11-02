@@ -1,11 +1,52 @@
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
 #include <open3d/geometry/TriangleMesh.h>
+#include <iostream>
 #include <numeric>
 #include <random>
-#include <iostream>
+#include <stdexcept>
+#include <benchmarking_3dcpp/input_types.hpp>
 
 SurfaceSampler::SurfaceSampler(double point_density) 
-    : point_density_(point_density), rng_(std::random_device{}()) {}
+    : point_density_(point_density), rng_(std::random_device{}()) 
+{
+
+}
+
+std::shared_ptr<std::vector<SurfacePoint> > SurfaceSampler::prepareSurfacePoints(std::shared_ptr<GeometryData> p_scene_object)
+{
+    std::vector<SurfacePoint> surface_points;
+    if(p_scene_object->getType() == GeometryType::TriangleMesh)
+    {
+        // Sample surface points
+        const auto* mesh_data = static_cast<const TriangleMeshData*>(p_scene_object.get());
+
+        surface_points = this->sampleUniformly(*(mesh_data->getData()));
+
+        return std::make_shared<std::vector<SurfacePoint> >(surface_points);
+    }
+    else if(p_scene_object->getType() == GeometryType::PointCloud)
+    {
+        throw std::runtime_error("NotImplemented: line 54");
+        // We directly use the point cloud as the surface points
+        // std::cout << "We haven't implemented this branch" << std::endl;
+        // const auto* cloud_data = static_cast<const PointCloudData*>(surface.get());
+
+        // if(!cloud_data->isValid())
+        // {
+        //     tasks_[current_test_id].result = {};
+        //     return;
+        // }
+
+        // surface_points = sampler_->sampleUniformly(*(cloud_data->getData()));
+
+        //     tasks_[current_test_id].result = {};
+        //     return;
+    }
+    else
+    {
+        throw std::runtime_error("NotImplemented: surface sampler line 54");
+    }
+}
 
 std::vector<SurfacePoint> SurfaceSampler::sampleUniformly(
     const open3d::geometry::TriangleMesh& mesh) {
@@ -13,7 +54,6 @@ std::vector<SurfacePoint> SurfaceSampler::sampleUniformly(
     auto triangle_areas = computeTriangleAreas(mesh);
     double total_area = std::accumulate(triangle_areas.begin(), 
                                        triangle_areas.end(), 0.0);
-    
     return rejectionSamplingCPU(mesh, triangle_areas, total_area);
 }
 
@@ -21,6 +61,8 @@ std::vector<SurfacePoint> SurfaceSampler::sampleUniformly(
     const open3d::geometry::PointCloud& pointcloud)
 {
     (void)pointcloud;
+
+    throw std::runtime_error("NotImplemented: SurfaceSampler::sampleUniformly");
 
     std::cout << "We have not implemented SurfaceSampler::sampleUniformly(const open3d::geometry::PointCloud & pointcloud)" << std::endl;
     return std::vector<SurfacePoint>();
@@ -51,9 +93,13 @@ std::vector<double> SurfaceSampler::computeTriangleAreas(
 std::vector<SurfacePoint> SurfaceSampler::rejectionSamplingCPU(
     const open3d::geometry::TriangleMesh& mesh,
     const std::vector<double>& triangle_areas,
-    double total_area) {
-    
+    double total_area) 
+{
+    // std::cout << "total_area: " << total_area  << std::endl;
+    // std::cout << "point_density_: " << point_density_ << std::endl;
+
     const size_t target_points = static_cast<size_t>(total_area * point_density_);
+    // std::cout << "target points: " << target_points << std::endl;
     std::vector<SurfacePoint> samples;
     samples.reserve(target_points);
     
@@ -67,7 +113,7 @@ std::vector<SurfacePoint> SurfaceSampler::rejectionSamplingCPU(
     std::vector<double> cumulative_areas(triangle_areas.size());
     std::partial_sum(triangle_areas.begin(), triangle_areas.end(), 
                      cumulative_areas.begin());
-    
+
     for (size_t i = 0; i < target_points; ++i) {
         // Select triangle proportional to area
         double r = dist(rng_) * total_area;
@@ -99,7 +145,7 @@ std::vector<SurfacePoint> SurfaceSampler::rejectionSamplingCPU(
         
         samples.push_back({point, normal, static_cast<int>(tri_idx), false});
     }
-    
+
     return samples;
 }
 

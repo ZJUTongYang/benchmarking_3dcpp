@@ -32,6 +32,7 @@ find_package(CUDAToolkit REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(TBB REQUIRED COMPONENTS tbb)
+find_package(HDF5 REQUIRED COMPONENTS C CXX)
 
 # Enable CUDA if available
 if(CMAKE_CUDA_COMPILER)
@@ -53,6 +54,7 @@ endif()
 include_directories(
   include
   ${Eigen3_INCLUDE_DIRS}
+  ${HDF5_INCLUDE_DIRS}
 )
 
 # Add CUDA source files
@@ -88,18 +90,18 @@ add_executable(benchmarking_3dcpp_node
   src/benchmarking_3dcpp.cpp
   src/eval/surface_sampler.cpp
   src/eval/coverage_evaluator.cpp
+  src/viz/benchmarking_viz.cpp
   src/alg/nuc.cpp)
-
-
-
 
 # Link CUDA libraries
 target_link_libraries(benchmarking_3dcpp_node
     cuda_kernels
     ${TBB_LIBRARIES}
     yaml-cpp
+    ${HDF5_LIBRARIES}
+    ${HDF5_HL_LIBRARIES}
+    HDF5::HDF5
 )
-
 
 ament_target_dependencies(benchmarking_3dcpp_node
   rclcpp
@@ -113,11 +115,30 @@ ament_target_dependencies(benchmarking_3dcpp_node
   spdlog
 )
 
+add_executable(benchmarking_viz_node
+  src/benchmarking_viz_node.cpp
+  src/viz/benchmarking_viz.cpp
+)
+
+target_include_directories(benchmarking_viz_node PRIVATE
+  include
+)
+
+target_link_libraries(benchmarking_viz_node
+  ${HDF5_LIBRARIES}
+  ${HDF5_HL_LIBRARIES}
+  HDF5::HDF5
+)
+
+ament_target_dependencies(benchmarking_viz_node
+  rclcpp
+  tf2_eigen
+)
+
 # Add compiler flags for OpenMP
-target_link_libraries(benchmarking_3dcpp_node OpenMP::OpenMP_CXX)
-# target_compile_options(benchmarking_3dcpp_node PRIVATE
-#     $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>
-# )
+target_link_libraries(benchmarking_3dcpp_node 
+  OpenMP::OpenMP_CXX
+)
 
 install(TARGETS
   benchmarking_3dcpp_node
