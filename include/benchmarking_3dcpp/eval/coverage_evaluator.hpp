@@ -73,8 +73,10 @@ private:
         const std::vector<RobotWaypoint>& path,
         double max_distance, double max_angle);
         
+#ifdef USE_CUDA 
     std::vector<bool> calculateCoverageCUDA(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
         double max_distance, double max_angle);
+#endif
 };

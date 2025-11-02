@@ -1,27 +1,36 @@
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
-#include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
 #include <algorithm>
 #include <execution>
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
+#ifdef USE_CUDA
+#include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
+#endif
+
 CoverageEvaluator::CoverageEvaluator(bool use_cuda, double point_density) 
-    : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>(point_density)) {
+    : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>(point_density)) 
+{
+#ifdef USE_CUDA
     if (use_cuda_) {
         setupCUDA();
     }
+#endif
 }
 
-CoverageEvaluator::~CoverageEvaluator() {
+CoverageEvaluator::~CoverageEvaluator() 
+{
+#ifdef USE_CUDA
     if (use_cuda_) {
         cleanupCUDA();
     }
+#endif
 }
 
 void CoverageEvaluator::calculateCoverage(int current_test_id)
 {
-
+    (void)current_test_id; // 标记为已使用，消除警告
 }
 
 void CoverageEvaluator::eval(int current_test_id, 
@@ -34,6 +43,7 @@ void CoverageEvaluator::eval(int current_test_id,
     rclcpp::Time t1 = rclcpp::Clock().now();
     // Calculate coverage
     std::vector<bool> coverage_mask;
+#ifdef USE_CUDA
     if (use_cuda_) {
         coverage_mask = calculateCoverageCUDA(surface_points, path, 
                                             max_distance, M_PI);
@@ -41,6 +51,11 @@ void CoverageEvaluator::eval(int current_test_id,
         coverage_mask = calculateCoverageCPU(surface_points, path,
                                            max_distance, M_PI);
     }
+#else
+    coverage_mask = calculateCoverageCPU(surface_points, path,
+                                           max_distance, M_PI);
+#endif
+
     rclcpp::Time t2 = rclcpp::Clock().now();
     std::cout << "Coverage evaluation time (CUDA): " << (t2 - t1).seconds() << "s" << std::endl;
     
@@ -95,6 +110,7 @@ std::vector<bool> CoverageEvaluator::calculateCoverageCPU(
     return coverage_mask;
 }
 
+#ifdef USE_CUDA
 std::vector<bool> CoverageEvaluator::calculateCoverageCUDA(
     const std::vector<SurfacePoint>& surface_points,
     const std::vector<RobotWaypoint>& path,
@@ -195,6 +211,7 @@ std::vector<bool> CoverageEvaluator::calculateCoverageCUDA(
     
     return coverage_mask;
 }
+#endif
 
 void CoverageEvaluator::registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
     const std::string& algorithm_name, const YAML::Node& config, 

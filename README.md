@@ -19,12 +19,19 @@ If you evaluate your algorithm using our code, please consider citing our algori
 }
 ```
 
-## Dependencies
+## Dependencies (Requirements)
 
+open3d 0.18.0 (C++ version)
+
+Eigen3
+
+sudo apt install libglfw3 libglfw3-dev
+
+## Dependencies (Recommendation)
+
+CUDA
 
 spdlog
-open3d 0.18.0 (C++ version)
-nlohmann-json
 
 
 

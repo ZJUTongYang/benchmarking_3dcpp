@@ -1,5 +1,9 @@
 #pragma once
+
+#ifdef USE_CUDA
 #include <cuda_runtime.h>
+#endif
+
 #include <Eigen/Core>
 
 struct CudaSurfacePoint {

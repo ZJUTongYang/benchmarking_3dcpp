@@ -11,8 +11,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-#enable cuda language
-enable_language(CUDA)
+
 
 # find dependencies
 find_package(rclcpp REQUIRED)
@@ -28,14 +27,22 @@ find_package(spdlog REQUIRED)
 
 find_package(Open3D REQUIRED)
 
-find_package(CUDAToolkit REQUIRED)
+find_package(glfw3 REQUIRED) # required for open3d visualization
 find_package(OpenMP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(TBB REQUIRED COMPONENTS tbb)
 find_package(HDF5 REQUIRED COMPONENTS C CXX)
 
 # Enable CUDA if available
+find_package(CUDAToolkit QUIET)
+
+
+
 if(CMAKE_CUDA_COMPILER)
+    
+    #enable cuda language
+    enable_language(CUDA)
+
     set(USE_CUDA TRUE)
     message(STATUS "CUDA found, building with GPU acceleration")
     
@@ -46,9 +53,9 @@ if(CMAKE_CUDA_COMPILER)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17 --expt-relaxed-constexpr -O3")
     set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} -O3 -DNDEBUG")
     
-# else()
-#     set(USE_CUDA FALSE)
-#     message(STATUS "CUDA not found, building CPU-only version")
+else()
+    set(USE_CUDA FALSE)
+    message(STATUS "CUDA not found, building CPU-only version")
 endif()
 
 include_directories(
@@ -57,33 +64,36 @@ include_directories(
   ${HDF5_INCLUDE_DIRS}
 )
 
-# Add CUDA source files
-set(CUDA_SOURCES src/cuda/cuda_kernels.cu)
+if(USE_CUDA)
 
-# Create library for CUDA kernels with explicit language specification
-add_library(cuda_kernels STATIC)
-target_sources(cuda_kernels PRIVATE ${CUDA_SOURCES})
+    # Add CUDA source files
+    set(CUDA_SOURCES src/cuda/cuda_kernels.cu)
 
-# Set properties for CUDA compilation
-set_target_properties(cuda_kernels PROPERTIES
-    CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
-    CUDA_RUNTIME_LIBRARY Shared
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CUDA
-)
+    # Create library for CUDA kernels with explicit language specification
+    add_library(cuda_kernels STATIC)
+    target_sources(cuda_kernels PRIVATE ${CUDA_SOURCES})
 
-target_include_directories(cuda_kernels PRIVATE
-  ${Eigen3_INCLUDE_DIRS}
-  include
-  ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-)
+    # Set properties for CUDA compilation
+    set_target_properties(cuda_kernels PROPERTIES
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+        CUDA_RUNTIME_LIBRARY Shared
+        POSITION_INDEPENDENT_CODE ON
+        LINKER_LANGUAGE CUDA
+    )
 
-# Link CUDA libraries to the kernel library
-target_link_libraries(cuda_kernels
-    CUDA::cudart
-    Eigen3::Eigen
-    TBB::tbb
-)
+    target_include_directories(cuda_kernels PRIVATE
+        ${Eigen3_INCLUDE_DIRS}
+        include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+
+    # Link CUDA libraries to the kernel library
+    target_link_libraries(cuda_kernels
+        CUDA::cudart
+        Eigen3::Eigen
+        TBB::tbb
+    )
+endif()
 
 add_executable(benchmarking_3dcpp_node 
   src/benchmarking_3dcpp_node.cpp
@@ -93,9 +103,14 @@ add_executable(benchmarking_3dcpp_node
   src/viz/benchmarking_viz.cpp
   src/alg/nuc.cpp)
 
+if(USE_CUDA)
+    target_link_libraries(benchmarking_3dcpp_node
+        cuda_kernels
+    )
+endif()
+
 # Link CUDA libraries
 target_link_libraries(benchmarking_3dcpp_node
-    cuda_kernels
     ${TBB_LIBRARIES}
     yaml-cpp
     ${HDF5_LIBRARIES}
