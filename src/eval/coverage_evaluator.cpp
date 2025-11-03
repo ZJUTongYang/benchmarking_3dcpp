@@ -100,8 +100,6 @@ void CoverageEvaluator::eval(int current_test_id,
 
     tasks_[current_test_id].result.robot_path = path;
     tasks_[current_test_id].result.coverage_ratio = coverage_ratio;
-    // tasks_[current_test_id].result.point_covered_by = coverage_indices;
-    // tasks_[current_test_id].result.point_covered_num = coverage_counts;
     tasks_[current_test_id].result.total_points = surface_points.size();
     tasks_[current_test_id].result.covered_points = covered_count;
 

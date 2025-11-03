@@ -11,6 +11,11 @@ public:
     {
         robot_name_ = robot_name;
     }
+
+    // virtual bool isPointCovered(const SurfacePoint& point, 
+    //                            const RobotWaypoint& waypoint, 
+    //                            double max_distance) = 0;
+
 private: 
     std::string robot_name_;
 };
