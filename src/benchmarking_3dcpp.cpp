@@ -25,18 +25,6 @@ Benchmarking3DCPP::Benchmarking3DCPP():
     }
 
     this->declare_parameter("max_angle", M_PI);
-
-    // Publishers
-    coverage_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-        "coverage_visualization", 10);
-
-    path_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
-        "path_visualization", 10
-    );
-
-    scene_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
-        "scene_visualization", 10
-    );
         
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(1000),
@@ -187,7 +175,6 @@ void Benchmarking3DCPP::runSingleTest()
     }
 }
 
-
 void Benchmarking3DCPP::saveEvalToFile(int task_id)
 {
     const auto& the_task = benchmarker_->getTask(task_id);
@@ -197,7 +184,6 @@ void Benchmarking3DCPP::saveEvalToFile(int task_id)
     std::string alg_name = the_task.algorithm.name;
 
     std::string filename = robot_name + "_" + scene_name + "_" + alg_name + ".h5";
-
 
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmarking_3dcpp");
     std::filesystem::path file_fullname = std::filesystem::path(package_share_directory) / "output" / filename;
@@ -222,6 +208,5 @@ void Benchmarking3DCPP::saveEvalToFile(int task_id)
     {
         std::cout << "Failed to save to " << file_fullname << std::endl;
     }
-
 }
     

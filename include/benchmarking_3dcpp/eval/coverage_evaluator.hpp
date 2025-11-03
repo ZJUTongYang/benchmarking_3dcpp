@@ -30,7 +30,7 @@ public:
     void eval(int current_test_id, 
         const std::vector<SurfacePoint>& surface_points);
 
-    void calculateCoverage(int current_test_id);
+    // void calculateCoverage(int current_test_id);
 
     void registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
         const std::string& algorithm_name, const YAML::Node& config, 

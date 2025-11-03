@@ -28,11 +28,6 @@ CoverageEvaluator::~CoverageEvaluator()
 #endif
 }
 
-void CoverageEvaluator::calculateCoverage(int current_test_id)
-{
-    (void)current_test_id; // 标记为已使用，消除警告
-}
-
 void CoverageEvaluator::eval(int current_test_id, 
     const std::vector<SurfacePoint>& surface_points)
 {
@@ -65,14 +60,11 @@ void CoverageEvaluator::eval(int current_test_id,
     double coverage_ratio = static_cast<double>(covered_count) / 
                            surface_points.size();
     
-    // tasks_[current_test_id].result = {path, coverage_ratio, coverage_mask, 
-    //         surface_points.size(), covered_count, surface_points};
     tasks_[current_test_id].result.robot_path = path;
     tasks_[current_test_id].result.coverage_ratio = coverage_ratio;
     tasks_[current_test_id].result.coverage_mask = coverage_mask;
     tasks_[current_test_id].result.total_points = surface_points.size();
     tasks_[current_test_id].result.covered_points = covered_count;
-    // tasks_[current_test_id].result.surface_points = surface_points;
 }
 
 
