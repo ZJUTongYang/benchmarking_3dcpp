@@ -63,15 +63,15 @@ void CoverageEvaluator::eval(int current_test_id,
 
     if (use_cuda_) {
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
-                                            max_distance, M_PI);
+                                            max_distance);
     } else {
         coverage_indices = calculateCoverageCPU(surface_points, path,
-                                           max_distance, M_PI);
+                                           max_distance);
     }
 #else
     std::cout << "We do not have CUDA" << std::endl;
     coverage_indices = calculateCoverageCPU(surface_points, path,
-                                           max_distance, M_PI);
+                                           max_distance);
 #endif
 
     rclcpp::Time t2 = rclcpp::Clock().now();
@@ -124,7 +124,7 @@ void CoverageEvaluator::eval(int current_test_id,
 std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
     const std::vector<SurfacePoint>& surface_points,
     const std::vector<RobotWaypoint>& path,
-    double max_distance, double max_angle_rad) {
+    double max_distance) {
     
     std::vector<std::vector<int> > coverage_indices(surface_points.size());
     const double max_distance_sq = max_distance * max_distance;
@@ -141,17 +141,17 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
             double distance_sq = (point.position - waypoint.position).squaredNorm();
             if (distance_sq > max_distance_sq) continue;
             
-            // Check angle constraint
-            Eigen::Vector3d robot_approach = 
-                waypoint.orientation * Eigen::Vector3d::UnitZ();
-            double cos_angle = point.normal.dot(-robot_approach);
-            double angle = std::acos(std::clamp(cos_angle, -1.0, 1.0));
+            // // Check angle constraint
+            // Eigen::Vector3d robot_approach = 
+            //     waypoint.orientation * Eigen::Vector3d::UnitZ();
+            // double cos_angle = point.normal.dot(-robot_approach);
+            // double angle = std::acos(std::clamp(cos_angle, -1.0, 1.0));
             
-            if (angle <= max_angle_rad) {
-                // coverage_mask[idx] = true;
-                // break;
-                coverage_indices[idx].emplace_back(static_cast<int>(wp_idx));
-            }
+            // if (angle <= max_angle_rad) {
+            //     // coverage_mask[idx] = true;
+            //     // break;
+            coverage_indices[idx].emplace_back(static_cast<int>(wp_idx));
+            // }
         }
     });
     
@@ -163,7 +163,7 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
 std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     const std::vector<SurfacePoint>& surface_points,
     const std::vector<RobotWaypoint>& path,
-    double max_distance, double max_angle_rad) {
+    double max_distance) {
     
     size_t num_points = surface_points.size();
     size_t num_waypoints = path.size();
@@ -276,7 +276,7 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
             d_points, num_points,
             d_waypoints, num_waypoints,
             static_cast<float>(max_distance),
-            static_cast<float>(max_angle_rad),
+            // static_cast<float>(max_angle_rad),
             d_coverage_matrix, d_coverage_counts);
         
         // 将覆盖矩阵复制回主机

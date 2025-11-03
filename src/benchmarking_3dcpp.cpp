@@ -24,8 +24,6 @@ Benchmarking3DCPP::Benchmarking3DCPP():
         return;
     }
 
-    this->declare_parameter("max_angle", M_PI);
-        
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(1000),
         std::bind(&Benchmarking3DCPP::runSingleTest, this));

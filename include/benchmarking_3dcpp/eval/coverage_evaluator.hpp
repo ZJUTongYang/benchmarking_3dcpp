@@ -73,12 +73,12 @@ private:
     std::vector<std::vector<int> > calculateCoverageCPU(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
-        double max_distance, double max_angle);
+        double max_distance);
         
 #ifdef USE_CUDA 
     std::vector<std::vector<int> > calculateCoverageCUDA(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
-        double max_distance, double max_angle);
+        double max_distance);
 #endif
 };

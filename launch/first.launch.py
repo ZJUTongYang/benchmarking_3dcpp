@@ -14,12 +14,6 @@ def generate_launch_description():
         'config_filename',
         default_value=os.path.join(get_package_share_directory('benchmarking_3dcpp'), 'config', 'config.yaml'),
     )
-    
-    # scene_filename_arg = DeclareLaunchArgument(
-    #     'scene_filename',
-    #     default_value=os.path.join(get_package_share_directory('benchmarking_3dcpp'), 'scene', 'remeshed_saddle.stl'),
-    #     description='Path to the surface to be covered.'
-    # )
 
     nuc_node = Node(
         package='nuc_ros2',
@@ -33,14 +27,12 @@ def generate_launch_description():
         executable='benchmarking_3dcpp_node',
         name='benchmarking_3dcpp_node',
         parameters=[
-            # {'scene_filename': LaunchConfiguration('scene_filename')}
             {'config_filename': LaunchConfiguration('config_filename')}
         ],
         output='screen'
     )
 
     return LaunchDescription([
-        # scene_filename_arg,
         config_filename_arg,
         nuc_node,
         benchmarking_3dcpp_node
