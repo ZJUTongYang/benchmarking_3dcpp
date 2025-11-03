@@ -47,12 +47,88 @@ void saveRobotPath(H5::H5File& file, const std::vector<RobotWaypoint>& robot_pat
 
 void saveSurfacePointData(H5::H5File& file, const std::vector<SurfacePoint>& surface_points)
 {
-    // hsize_t dims[2] = {surface_points.size(), 3};
+    hsize_t dims[2] = {surface_points.size(), 3};
+
+    H5::DataSpace dataspace(2, dims);
+
+    H5::FloatType datatype(H5::PredType::NATIVE_DOUBLE);
+
+    H5::DataSet dataset = file.createDataSet("/surface_points", datatype, dataspace);
+
+    std::vector<double> data;
+    data.resize(surface_points.size() * 3);
+
+    for (size_t i = 0; i < surface_points.size(); i++)
+    {
+
+        data[i * 3 + 0] = surface_points[i].position.x();
+        data[i * 3 + 1] = surface_points[i].position.y();
+        data[i * 3 + 2] = surface_points[i].position.z();
+    }
+
+    dataset.write(data.data(), datatype);
+
 }
 
-void saveCoverageInfo(H5::H5File& file)
+void saveCoverageResult(H5::H5File& file, const CoverageResult& the_result)
 {
+    H5::Group coverage_group = file.createGroup("/coverage_result");
 
+    H5::DataSpace scalar_dataspace(H5S_SCALAR);
+
+    H5::Attribute coverage_attr = coverage_group.createAttribute("coverage_ratio", 
+                                                                H5::PredType::NATIVE_DOUBLE, 
+                                                                scalar_dataspace);
+    coverage_attr.write(H5::PredType::NATIVE_DOUBLE, &the_result.coverage_ratio);
+
+
+    H5::Attribute time_attr = coverage_group.createAttribute("computation_time", 
+                                                            H5::PredType::NATIVE_DOUBLE, 
+                                                            scalar_dataspace);
+    time_attr.write(H5::PredType::NATIVE_DOUBLE, &the_result.computation_time);
+
+    H5::Attribute total_attr = coverage_group.createAttribute("total_points", 
+                                                                H5::PredType::NATIVE_HSIZE, 
+                                                                scalar_dataspace);
+    hsize_t total_points = the_result.total_points;
+    total_attr.write(H5::PredType::NATIVE_HSIZE, &total_points);
+
+
+    H5::Attribute covered_attr = coverage_group.createAttribute("covered_points", 
+                                                                H5::PredType::NATIVE_HSIZE, 
+                                                                scalar_dataspace);
+    hsize_t covered_points = the_result.covered_points;
+    covered_attr.write(H5::PredType::NATIVE_HSIZE, &covered_points);
+
+    saveCoverageMask(coverage_group, the_result.coverage_mask);
+}
+
+void saveCoverageMask(H5::Group& group, const std::vector<bool>& coverage_mask)
+{
+    if(coverage_mask.empty())
+        return ;
+
+    hsize_t dims[1] = {coverage_mask.size()};
+    H5::DataSpace dataspace(1, dims);
+    
+    // 将bool转换为unsigned char保存，因为HDF5没有原生bool类型
+    H5::IntType datatype(H5::PredType::NATIVE_UCHAR);
+    H5::DataSet dataset = group.createDataSet("coverage_mask", datatype, dataspace);
+
+
+    std::vector<unsigned char> mask_data(coverage_mask.size());
+    for (size_t i = 0; i < coverage_mask.size(); i++) {
+        mask_data[i] = coverage_mask[i] ? 1 : 0;
+    }
+
+    dataset.write(mask_data.data(), H5::PredType::NATIVE_UCHAR);
+    
+    H5::DataSpace attr_dataspace(H5S_SCALAR);
+    H5::StrType str_type(H5::PredType::C_S1, 256);
+    
+    H5::Attribute desc_attr = dataset.createAttribute("description", str_type, attr_dataspace);
+    std::string description = "Coverage mask: 1=covered, 0=not covered";
+    desc_attr.write(str_type, description);
 }
 
 bool saveToHDF5(const std::string& filename, const std::string& robot_name, 
@@ -66,7 +142,7 @@ bool saveToHDF5(const std::string& filename, const std::string& robot_name,
         saveMetaData(file, robot_name, scene_name, alg_name);
         saveRobotPath(file, the_result.robot_path);
         saveSurfacePointData(file, *surface_points);
-        saveCoverageInfo(file);
+        saveCoverageMask(file, the_result.coverage_mask);
         return true;
     }
     catch(const std::exception& e)

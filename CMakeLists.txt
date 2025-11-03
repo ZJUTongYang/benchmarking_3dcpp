@@ -157,6 +157,7 @@ target_link_libraries(benchmarking_3dcpp_node
 
 install(TARGETS
   benchmarking_3dcpp_node
+  benchmarking_viz_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

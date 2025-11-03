@@ -180,6 +180,7 @@ void Benchmarking3DCPP::runSingleTest()
         std::shared_ptr<CoverageResult> p_result = p_algorithm->getSolution();
         benchmarker_->setSolution(curr_test_index_, p_result);
         benchmarker_->eval(curr_test_index_, *(scenes_[the_scene_config.name]->surface_points_));
+        saveEvalToFile(curr_test_index_);
         test_is_running_ = false;
         curr_test_index_++;
         timer_->reset();
@@ -199,11 +200,28 @@ void Benchmarking3DCPP::saveEvalToFile(int task_id)
 
 
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmarking_3dcpp");
-    std::filesystem::path file_fullname = std::filesystem::path(package_share_directory) / "scene" / filename;
+    std::filesystem::path file_fullname = std::filesystem::path(package_share_directory) / "output" / filename;
 
-    saveToHDF5(file_fullname, the_task.robot.name, the_task.scene.name, 
+    std::filesystem::path output_dir = file_fullname.parent_path();
+    std::error_code ec;
+    if (!std::filesystem::exists(output_dir, ec) && !std::filesystem::create_directories(output_dir, ec)) 
+    {
+        std::cerr << "Error: Could not create directory " << output_dir << ": " << ec.message() << std::endl;
+        return;
+    }
+
+    bool success = saveToHDF5(file_fullname, the_task.robot.name, the_task.scene.name, 
             the_task.algorithm.name, 
             scenes_[the_task.scene.name]->surface_points_, 
             the_task.result);
-    
+    if(success)
+    {
+        std::cout << "Saved to " << file_fullname << std::endl;
+    }
+    else
+    {
+        std::cout << "Failed to save to " << file_fullname << std::endl;
+    }
+
 }
+    

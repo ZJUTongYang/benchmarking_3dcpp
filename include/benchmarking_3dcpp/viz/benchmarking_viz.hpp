@@ -11,7 +11,9 @@ void saveRobotPath(H5::H5File& file, const std::vector<RobotWaypoint>& robot_pat
 
 void saveSurfacePointData(H5::H5File& file, const std::vector<SurfacePoint>& surface_points);
 
-void saveCoverageInfo(H5::H5File& file);
+void saveCoverageResult(H5::H5File& file, const CoverageResult& the_result);
+
+void saveCoverageMask(H5::Group& group, const std::vector<bool>& coverage_mask);
 
 bool saveToHDF5(const std::string& filename, const std::string& robot_name, 
     const std::string& scene_name, const std::string& alg_name, 
