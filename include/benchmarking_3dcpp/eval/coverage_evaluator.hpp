@@ -1,7 +1,7 @@
 #pragma once
 #include <benchmarking_3dcpp/types.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
-#include <open3d/geometry/TriangleMesh.h>
+// #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <vector>
 #include <benchmarking_3dcpp/input_types.hpp>
@@ -27,6 +27,8 @@ public:
     CoverageEvaluator(bool use_cuda = true, double point_density=1000);
     ~CoverageEvaluator();
     
+    int countContinuousCoverage(const std::vector<int>& coverage_indices);
+
     void eval(int current_test_id, 
         const std::vector<SurfacePoint>& surface_points);
 
@@ -68,13 +70,13 @@ private:
     bool use_cuda_;
     std::unique_ptr<SurfaceSampler> sampler_;
     
-    std::vector<bool> calculateCoverageCPU(
+    std::vector<std::vector<int> > calculateCoverageCPU(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
         double max_distance, double max_angle);
         
 #ifdef USE_CUDA 
-    std::vector<bool> calculateCoverageCUDA(
+    std::vector<std::vector<int> > calculateCoverageCUDA(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
         double max_distance, double max_angle);

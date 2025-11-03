@@ -100,7 +100,19 @@ void saveCoverageResult(H5::H5File& file, const CoverageResult& the_result)
     hsize_t covered_points = the_result.covered_points;
     covered_attr.write(H5::PredType::NATIVE_HSIZE, &covered_points);
 
-    saveCoverageMask(coverage_group, the_result.coverage_mask);
+    // save the number of times that each surface point is continuously covered
+    if (!the_result.point_covered_num.empty()) 
+    {
+        hsize_t dims[1] = {the_result.point_covered_num.size()};
+        H5::DataSpace dataspace(1, dims);
+        
+        H5::DataSet coverage_data = coverage_group.createDataSet("point_covered_num",
+                                                                H5::PredType::NATIVE_INT,
+                                                                dataspace);
+        coverage_data.write(the_result.point_covered_num.data(),
+                          H5::PredType::NATIVE_INT);
+    }
+
 }
 
 void saveCoverageMask(H5::Group& group, const std::vector<bool>& coverage_mask)
@@ -142,7 +154,7 @@ bool saveToHDF5(const std::string& filename, const std::string& robot_name,
         saveMetaData(file, robot_name, scene_name, alg_name);
         saveRobotPath(file, the_result.robot_path);
         saveSurfacePointData(file, *surface_points);
-        saveCoverageMask(file, the_result.coverage_mask);
+        saveCoverageResult(file, the_result);
         return true;
     }
     catch(const std::exception& e)

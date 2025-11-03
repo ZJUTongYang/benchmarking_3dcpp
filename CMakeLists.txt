@@ -36,10 +36,10 @@ find_package(HDF5 REQUIRED COMPONENTS C CXX)
 # Enable CUDA if available
 find_package(CUDAToolkit QUIET)
 
-
-
 if(CMAKE_CUDA_COMPILER)
-    
+
+    add_compile_definitions(USE_CUDA)
+
     #enable cuda language
     enable_language(CUDA)
 

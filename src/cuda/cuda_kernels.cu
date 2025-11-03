@@ -58,50 +58,136 @@ __device__ bool isPointCovered(
     return angle <= max_angle;
 }
 
-__global__ void coverageKernel(
-    CudaSurfacePoint* points, size_t num_points,
+__global__ void coverageKernelDetailed(
+    const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float max_distance, float max_angle) {
+    float max_distance, float max_angle,
+    char* coverage_matrix) {  // two-dim matrix: points × waypoints
+    
+    // 计算全局索引：每个线程处理一个点-路径点对
+    int global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int total_pairs = num_points * num_waypoints;
+    
+    if (global_idx >= total_pairs) return;
+    
+    // 从全局索引计算点索引和路径点索引
+    int point_idx = global_idx / num_waypoints;
+    int wp_idx = global_idx % num_waypoints;
+    
+    const CudaSurfacePoint& point = points[point_idx];
+    const CudaWaypoint& waypoint = waypoints[wp_idx];
+    
+    // 检查是否覆盖
+    bool covered = isPointCovered(point, waypoint, max_distance, max_angle);
+    
+    // 写入结果矩阵
+    coverage_matrix[point_idx * num_waypoints + wp_idx] = covered ? 1 : 0;
+}
+
+// 辅助内核：统计每个点的覆盖次数
+__global__ void countCoverageKernel(
+    const char* coverage_matrix, size_t num_points, size_t num_waypoints,
+    int* coverage_counts) {
     
     int point_idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (point_idx >= num_points) return;
-
-    points[point_idx].covered = false;
     
+    int count = 0;
     for (int wp_idx = 0; wp_idx < num_waypoints; ++wp_idx) {
-        if (isPointCovered(points[point_idx], waypoints[wp_idx], 
-                          max_distance, max_angle)) {
-            points[point_idx].covered = true;
-            break; // Point covered by at least one waypoint
+        if (coverage_matrix[point_idx * num_waypoints + wp_idx] == 1) {
+            count++;
         }
     }
+    coverage_counts[point_idx] = count;
 }
 
-void coverageKernelLauncher(
-    CudaSurfacePoint* points, size_t num_points,
+// __global__ void coverageKernel(
+//     CudaSurfacePoint* points, size_t num_points,
+//     const CudaWaypoint* waypoints, size_t num_waypoints,
+//     float max_distance, float max_angle) {
+    
+//     int point_idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     if (point_idx >= num_points) return;
+
+//     // points[point_idx].covered = false;
+//     points[point_idx].coverage_count = 0;
+//     points[point_idx].first_covering_waypoint = -1;
+    
+//     for (int wp_idx = 0; wp_idx < num_waypoints; ++wp_idx) {
+//         if (isPointCovered(points[point_idx], waypoints[wp_idx], 
+//                           max_distance, max_angle)) 
+//         {
+//             points[point_idx].coverage_count++;
+
+//             if (points[point_idx].first_covering_waypoint == -1) 
+//             {
+//                 points[point_idx].first_covering_waypoint = wp_idx;
+//             }
+//             // points[point_idx].covered = true;
+//             // break; // Point covered by at least one waypoint
+//         }
+//     }
+// }
+
+void detailedCoverageKernelLauncher(
+    const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float max_distance, float max_angle) {
+    float max_distance, float max_angle,
+    char* coverage_matrix, int* coverage_counts) {
     
+    // 启动第一个内核：计算覆盖矩阵
+    int total_pairs = num_points * num_waypoints;
     const int block_size = 256;
-    const int grid_size = (num_points + block_size - 1) / block_size;
+    const int grid_size = (total_pairs + block_size - 1) / block_size;
     
-    coverageKernel<<<grid_size, block_size>>>(
-        points, num_points, waypoints, num_waypoints, 
-        max_distance, max_angle);
+    coverageKernelDetailed<<<grid_size, block_size>>>(
+        points, num_points, waypoints, num_waypoints,
+        max_distance, max_angle, coverage_matrix);
     
-    // Check for kernel launch errors
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
-        fprintf(stderr, "Kernel launch error: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Coverage kernel launch error: %s\n", cudaGetErrorString(err));
         return;
     }
     
-
-    cudaDeviceSynchronize();
+    // 启动第二个内核：统计覆盖次数
+    const int count_grid_size = (num_points + block_size - 1) / block_size;
+    countCoverageKernel<<<count_grid_size, block_size>>>(
+        coverage_matrix, num_points, num_waypoints, coverage_counts);
+    
+    err = cudaGetLastError();
     if (err != cudaSuccess) {
-        fprintf(stderr, "Kernel execution error: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Count kernel launch error: %s\n", cudaGetErrorString(err));
     }
+    
+    cudaDeviceSynchronize();
 }
+
+// void coverageKernelLauncher(
+//     CudaSurfacePoint* points, size_t num_points,
+//     const CudaWaypoint* waypoints, size_t num_waypoints,
+//     float max_distance, float max_angle) {
+    
+//     const int block_size = 256;
+//     const int grid_size = (num_points + block_size - 1) / block_size;
+    
+//     coverageKernel<<<grid_size, block_size>>>(
+//         points, num_points, waypoints, num_waypoints, 
+//         max_distance, max_angle);
+    
+//     // Check for kernel launch errors
+//     cudaError_t err = cudaGetLastError();
+//     if (err != cudaSuccess) {
+//         fprintf(stderr, "Kernel launch error: %s\n", cudaGetErrorString(err));
+//         return;
+//     }
+    
+
+//     cudaDeviceSynchronize();
+//     if (err != cudaSuccess) {
+//         fprintf(stderr, "Kernel execution error: %s\n", cudaGetErrorString(err));
+//     }
+// }
 
 void setupCUDA() {
     cudaFree(0); // Initialize CUDA context

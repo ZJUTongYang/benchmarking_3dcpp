@@ -9,7 +9,6 @@
 struct CudaSurfacePoint {
     float x, y, z;
     float nx, ny, nz;
-    bool covered;
 };
 
 struct CudaWaypoint {
@@ -19,11 +18,17 @@ struct CudaWaypoint {
 };
 
 extern "C" {
-    void coverageKernelLauncher(
-        CudaSurfacePoint* points, size_t num_points,
-        const CudaWaypoint* waypoints, size_t num_waypoints,
-        float max_distance, float max_angle);
+    // void coverageKernelLauncher(
+    //     CudaSurfacePoint* points, size_t num_points,
+    //     const CudaWaypoint* waypoints, size_t num_waypoints,
+    //     float max_distance, float max_angle);
         
+    void detailedCoverageKernelLauncher(
+        const CudaSurfacePoint* points, size_t num_points,
+        const CudaWaypoint* waypoints, size_t num_waypoints,
+        float max_distance, float max_angle,
+        char* coverage_matrix, int* coverage_counts);
+
     void setupCUDA();
     void cleanupCUDA();
 }

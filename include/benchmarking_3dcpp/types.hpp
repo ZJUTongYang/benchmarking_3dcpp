@@ -49,7 +49,7 @@ struct CoverageResult
 {
     std::vector<RobotWaypoint> robot_path;
     double coverage_ratio;
-    std::vector<bool> coverage_mask;
+    std::vector<int> point_covered_num; // The number of times that each surface point is continuously visited
     double computation_time;
 
     // These are sampled dense surface points, for evaluation only. Not from the raw point cloud
@@ -60,10 +60,9 @@ struct CoverageResult
     {
         robot_path.clear();
         coverage_ratio = 0.0;
-        coverage_mask.clear();
+        point_covered_num.clear();
         computation_time = std::numeric_limits<double>::infinity();
         total_points = 0;
         covered_points = 0;
     }
 };
-
