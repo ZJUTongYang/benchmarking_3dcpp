@@ -23,6 +23,56 @@ __device__ float3 quaternionRotateVector(float qx, float qy, float qz, float qw,
     return result;
 }
 
+__device__ bool isCircularToolCovered(
+    const CudaSurfacePoint& point,
+    const CudaWaypoint& waypoint,
+    float radius, float depth
+)
+{
+    // 1. 计算工具在世界坐标系下的主轴方向向量
+    float3 tool_z_axis = make_float3(0.0f, 0.0f, -1.0f); // 工具的-Z方向
+    float3 tool_direction = quaternionRotateVector(
+        waypoint.qx, waypoint.qy, waypoint.qz, waypoint.qw, tool_z_axis);
+
+    // 2. 计算从工具中心到曲面点的向量
+    float3 vec_to_point = make_float3(
+        point.x - waypoint.x,
+        point.y - waypoint.y,
+        point.z - waypoint.z
+    );
+
+    // 3. 计算曲面点在工具轴线上的投影长度
+    float projection_length = 
+        vec_to_point.x * tool_direction.x +
+        vec_to_point.y * tool_direction.y +
+        vec_to_point.z * tool_direction.z;
+
+    // 4. 检查投影点是否在工具的有效长度范围内 [0, depth]
+    if (projection_length < 0.0f || projection_length > depth) {
+        return false;
+    }
+
+    // 5. 计算工具轴线上离曲面点最近的点
+    float3 closest_point_on_axis = make_float3(
+        waypoint.x + projection_length * tool_direction.x,
+        waypoint.y + projection_length * tool_direction.y,
+        waypoint.z + projection_length * tool_direction.z
+    );
+
+    // 6. 计算曲面点到工具轴线的最短距离（即径向距离）
+    float dx = point.x - closest_point_on_axis.x;
+    float dy = point.y - closest_point_on_axis.y;
+    float dz = point.z - closest_point_on_axis.z;
+    float radial_distance_sq = dx*dx + dy*dy + dz*dz;
+
+    // 7. 检查径向距离是否在覆盖半径内
+    if (radial_distance_sq > radius) {
+        return false;
+    }
+
+    return true;
+}
+
 __device__ bool isPointCovered(
     const CudaSurfacePoint& point,
     const CudaWaypoint& waypoint,
@@ -63,7 +113,7 @@ __device__ bool isPointCovered(
 __global__ void coverageKernelDetailed(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float max_distance, 
+    float radius, float depth,
     char* coverage_matrix) {  // two-dim matrix: points × waypoints
     
     // 计算全局索引：每个线程处理一个点-路径点对
@@ -134,7 +184,7 @@ __global__ void countCoverageKernel(
 void detailedCoverageKernelLauncher(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float max_distance,
+    float radius, float depth,
     char* coverage_matrix, int* coverage_counts) {
     
     // 启动第一个内核：计算覆盖矩阵
@@ -144,7 +194,7 @@ void detailedCoverageKernelLauncher(
     
     coverageKernelDetailed<<<grid_size, block_size>>>(
         points, num_points, waypoints, num_waypoints,
-        max_distance, coverage_matrix);
+        radius, depth, coverage_matrix);
     
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {

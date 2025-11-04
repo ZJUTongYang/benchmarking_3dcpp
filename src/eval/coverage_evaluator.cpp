@@ -4,6 +4,7 @@
 #include <execution>
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <benchmarking_3dcpp/robot_model.hpp>
 
 #ifdef USE_CUDA
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
@@ -49,6 +50,7 @@ int CoverageEvaluator::countContinuousCoverage(const std::vector<int>& coverage_
 }
 
 void CoverageEvaluator::eval(int current_test_id, 
+    const std::shared_ptr<RobotModel>& p_robot_model,
     const std::vector<SurfacePoint>& surface_points)
 {
     std::shared_ptr<GeometryData> surface = tasks_[current_test_id].p_surface;
@@ -65,12 +67,12 @@ void CoverageEvaluator::eval(int current_test_id,
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
                                             max_distance);
     } else {
-        coverage_indices = calculateCoverageCPU(surface_points, path,
+        coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path,
                                            max_distance);
     }
 #else
     std::cout << "We do not have CUDA" << std::endl;
-    coverage_indices = calculateCoverageCPU(surface_points, path,
+    coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path,
                                            max_distance);
 #endif
 
@@ -120,6 +122,7 @@ void CoverageEvaluator::eval(int current_test_id,
 
 
 std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
+    const std::shared_ptr<RobotModel>& p_robot_model,
     const std::vector<SurfacePoint>& surface_points,
     const std::vector<RobotWaypoint>& path,
     double max_distance) {
@@ -136,20 +139,11 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
         for(size_t wp_idx = 0; wp_idx < path.size(); ++wp_idx)
         {
             const auto& waypoint = path[wp_idx];
-            double distance_sq = (point.position - waypoint.position).squaredNorm();
-            if (distance_sq > max_distance_sq) continue;
-            
-            // // Check angle constraint
-            // Eigen::Vector3d robot_approach = 
-            //     waypoint.orientation * Eigen::Vector3d::UnitZ();
-            // double cos_angle = point.normal.dot(-robot_approach);
-            // double angle = std::acos(std::clamp(cos_angle, -1.0, 1.0));
-            
-            // if (angle <= max_angle_rad) {
-            //     // coverage_mask[idx] = true;
-            //     // break;
+
+            if(p_robot_model->isPointCovered(point, waypoint))
+            {
             coverage_indices[idx].emplace_back(static_cast<int>(wp_idx));
-            // }
+            }
         }
     });
     

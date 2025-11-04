@@ -101,6 +101,7 @@ add_executable(benchmarking_3dcpp_node
   src/eval/surface_sampler.cpp
   src/eval/coverage_evaluator.cpp
   src/viz/benchmarking_viz.cpp
+  src/robot_model.cpp
   src/alg/nuc.cpp)
 
 if(USE_CUDA)

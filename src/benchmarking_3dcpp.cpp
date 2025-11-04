@@ -65,7 +65,22 @@ void Benchmarking3DCPP::initialize()
     {
         std::string robot_name = robot["name"].as<std::string>();
         std::cout << "Robot Name: " << robot_name << std::endl;
-        auto p_robot = std::make_shared<RobotModel>(robot_name);
+        std::shared_ptr<RobotModel> p_robot;
+        if(robot_name == "circular_tool")
+        {
+            p_robot = std::make_shared<CircularTool>(robot_name, robot["radius"].as<double>(), robot["depth"].as<double>());
+        }
+        else if(robot_name == "beam_like")
+        {
+            std::vector<std::pair<double, double> > temp;
+            double epsilon = 0.00001;
+            p_robot = std::make_shared<BeamLike>(robot_name, temp, epsilon);
+        }
+        else
+        {
+            std::cout << "YT: error, we do not support this robot: " << robot_name << std::endl;
+            return ;
+        }
         robots_[robot_name] = p_robot;
     }
 
@@ -165,7 +180,9 @@ void Benchmarking3DCPP::runSingleTest()
         // We copy the result to the evaluator
         std::shared_ptr<CoverageResult> p_result = p_algorithm->getSolution();
         benchmarker_->setSolution(curr_test_index_, p_result);
-        benchmarker_->eval(curr_test_index_, *(scenes_[the_scene_config.name]->surface_points_));
+        benchmarker_->eval(curr_test_index_, 
+                            robots_[the_robot_config.name],
+                            *(scenes_[the_scene_config.name]->surface_points_));
         saveEvalToFile(curr_test_index_);
         test_is_running_ = false;
         curr_test_index_++;

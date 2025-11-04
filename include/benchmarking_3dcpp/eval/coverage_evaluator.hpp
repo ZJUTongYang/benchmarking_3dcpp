@@ -10,6 +10,7 @@
 #include <benchmarking_3dcpp/scene.hpp>
 #include <H5Cpp.h>
 #include <benchmarking_3dcpp/viz/benchmarking_viz.hpp>
+#include <benchmarking_3dcpp/robot_model.hpp>
 
 struct Task
 {
@@ -30,6 +31,7 @@ public:
     int countContinuousCoverage(const std::vector<int>& coverage_indices);
 
     void eval(int current_test_id, 
+        const std::shared_ptr<RobotModel>& p_robot_model,
         const std::vector<SurfacePoint>& surface_points);
 
     // void calculateCoverage(int current_test_id);
@@ -71,6 +73,7 @@ private:
     std::unique_ptr<SurfaceSampler> sampler_;
     
     std::vector<std::vector<int> > calculateCoverageCPU(
+        const std::shared_ptr<RobotModel>& p_robot_model,
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
         double max_distance);
