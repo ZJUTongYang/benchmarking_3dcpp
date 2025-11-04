@@ -17,12 +17,36 @@ struct CudaWaypoint {
     float coverage_radius;
 };
 
+enum ToolType
+{
+    CIRCULAR_TOOL = 0, 
+    BEAM_LIKE_TOOL = 1
+};
+
+struct ToolParameters{
+    float param1;
+    float param2;
+    float param3;
+};
+
+struct CoverageConfig {
+    ToolType tool_type;
+    ToolParameters params;
+};
+
 extern "C" {
         
-    void detailedCoverageKernelLauncher(
+    __device__ bool isCircularToolCovered(
+        const CudaSurfacePoint& point, 
+        const CudaWaypoint& waypoint, 
+        float radius, float depth
+    );
+
+    void CoverageKernelLauncher(
         const CudaSurfacePoint* points, size_t num_points,
         const CudaWaypoint* waypoints, size_t num_waypoints,
-        float max_distance,
+        ToolType tool_type,
+        ToolParameters params,
         char* coverage_matrix, int* coverage_counts);
 
     void setupCUDA();

@@ -10,6 +10,40 @@
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
 #endif
 
+// 在 coverage_evaluator.cpp 中添加
+ToolType getToolTypeFromString(const std::string& tool_name) {
+    if (tool_name == "circular_tool") {
+        return CIRCULAR_TOOL;
+    } else if (tool_name == "beam_like") {
+        return BEAM_LIKE_TOOL;
+    } else {
+        // 默认使用CircularTool
+        RCLCPP_WARN(rclcpp::get_logger("CoverageEvaluator"), 
+                   "Unknown tool type: %s, using CIRCULAR_TOOL as default", tool_name.c_str());
+        return CIRCULAR_TOOL;
+    }
+}
+
+ToolParameters getToolParameters(std::shared_ptr<RobotModel> robot_model) {
+    ToolParameters params = {0.0f, 0.0f, 0.0f};
+    
+    auto circular_tool = std::dynamic_pointer_cast<CircularTool>(robot_model);
+    if (circular_tool) {
+        params.param1 = static_cast<float>(circular_tool->getRadius());
+        params.param2 = static_cast<float>(circular_tool->getDepth());
+        return params;
+    }
+    
+    auto beam_like = std::dynamic_pointer_cast<BeamLike>(robot_model);
+    if (beam_like) {
+        // 假设BeamLike有getEpsilon方法
+        // params.param3 = static_cast<float>(beam_like->getEpsilon());
+        return params;
+    }
+    
+    return params;
+}
+
 CoverageEvaluator::CoverageEvaluator(bool use_cuda, double point_density) 
     : use_cuda_(use_cuda), sampler_(std::make_unique<SurfaceSampler>(point_density)) 
 {
@@ -65,7 +99,7 @@ void CoverageEvaluator::eval(int current_test_id,
 
     if (use_cuda_) {
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
-                                            max_distance);
+                                            p_robot_model);
     } else {
         coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path,
                                            max_distance);
@@ -142,7 +176,7 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
 
             if(p_robot_model->isPointCovered(point, waypoint))
             {
-            coverage_indices[idx].emplace_back(static_cast<int>(wp_idx));
+                coverage_indices[idx].emplace_back(static_cast<int>(wp_idx));
             }
         }
     });
@@ -155,8 +189,11 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
 std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     const std::vector<SurfacePoint>& surface_points,
     const std::vector<RobotWaypoint>& path,
-    double max_distance) {
-    
+    std::shared_ptr<RobotModel> the_tool) 
+{
+    ToolType tool_type = getToolTypeFromString(the_tool->getName());
+    ToolParameters params = getToolParameters(the_tool);
+
     size_t num_points = surface_points.size();
     size_t num_waypoints = path.size();
     
@@ -237,7 +274,6 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
         cudaFree(d_coverage_matrix);
         return std::vector<std::vector<int>>(num_points);
     }
-    
 
     // 复制数据到GPU
     if(success){
@@ -264,11 +300,10 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     if(success)
     {
         // 启动内核
-        detailedCoverageKernelLauncher(
+        CoverageKernelLauncher(
             d_points, num_points,
             d_waypoints, num_waypoints,
-            static_cast<float>(max_distance),
-            // static_cast<float>(max_angle_rad),
+            tool_type, params,
             d_coverage_matrix, d_coverage_counts);
         
         // 将覆盖矩阵复制回主机

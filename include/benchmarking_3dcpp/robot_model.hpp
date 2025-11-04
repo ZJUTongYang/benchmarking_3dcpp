@@ -13,6 +13,8 @@ public:
         robot_name_ = robot_name;
     }
 
+    virtual std::string getName() const { return robot_name_; }
+
     virtual bool isPointCovered(const SurfacePoint& point, 
                                const RobotWaypoint& waypoint) const = 0;
 

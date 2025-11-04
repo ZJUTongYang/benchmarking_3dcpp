@@ -82,6 +82,6 @@ private:
     std::vector<std::vector<int> > calculateCoverageCUDA(
         const std::vector<SurfacePoint>& surface_points,
         const std::vector<RobotWaypoint>& path,
-        double max_distance);
+        std::shared_ptr<RobotModel> the_tool);
 #endif
 };

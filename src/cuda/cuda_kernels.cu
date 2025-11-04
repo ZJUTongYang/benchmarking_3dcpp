@@ -73,47 +73,37 @@ __device__ bool isCircularToolCovered(
     return true;
 }
 
-__device__ bool isPointCovered(
-    const CudaSurfacePoint& point,
-    const CudaWaypoint& waypoint,
-    float max_distance) {
-    
-    // Calculate distance
-    float dx = point.x - waypoint.x;
-    float dy = point.y - waypoint.y;
-    float dz = point.z - waypoint.z;
-    float distance_sq = dx*dx + dy*dy + dz*dz;
-    float max_distance_sq = max_distance * max_distance;
+__device__ bool isBeamLikeToolCovered(
+    const CudaSurfacePoint& point, 
+    const CudaWaypoint& waypoint, 
+    float epsilon
+)
+{
+    return false;
+}
 
-    if(distance_sq > max_distance_sq)
-    {
-        return false;
+__device__ bool checkCoverageByToolType(
+    const CudaSurfacePoint& point, 
+    const CudaWaypoint& waypoint, 
+    ToolType tool_type, 
+    const ToolParameters& params)
+{
+    switch (tool_type) {
+        case CIRCULAR_TOOL:
+            return isCircularToolCovered(point, waypoint, params.param1, params.param2);
+        case BEAM_LIKE_TOOL:
+            return isBeamLikeToolCovered(point, waypoint, params.param3);
+        default:
+            return false;
     }
-    
-    return true;
-
-    // Calculate angle between surface normal and robot approach direction
-    // float3 normal = make_float3(point.nx, point.ny, point.nz);
-    // float3 robot_z_axis = make_float3(0.0f, 0.0f, 1.0f); // Unit Z in robot frame
-    // float3 robot_approach = quaternionRotateVector(
-    //     waypoint.qx, waypoint.qy, waypoint.qz, waypoint.qw, robot_z_axis);
-    
-    // Dot product and angle calculation
-    // float cos_angle = normal.x * (-robot_approach.x) + 
-    //                  normal.y * (-robot_approach.y) + 
-    //                  normal.z * (-robot_approach.z);
-    
-    // Clamp to valid range for acos
-    // cos_angle = fmaxf(fminf(cos_angle, 1.0f), -1.0f);
-    // float angle = acosf(cos_angle);
-    
-    // return angle <= max_angle;
 }
 
 __global__ void coverageKernelDetailed(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float radius, float depth,
+    ToolType tool_type,
+    ToolParameters params,
+    // float radius, float depth,
     char* coverage_matrix) {  // two-dim matrix: points × waypoints
     
     // 计算全局索引：每个线程处理一个点-路径点对
@@ -130,7 +120,7 @@ __global__ void coverageKernelDetailed(
     const CudaWaypoint& waypoint = waypoints[wp_idx];
     
     // 检查是否覆盖
-    bool covered = isPointCovered(point, waypoint, max_distance);
+    bool covered = checkCoverageByToolType(point, waypoint, tool_type, params);
     
     // 写入结果矩阵
     coverage_matrix[point_idx * num_waypoints + wp_idx] = covered ? 1 : 0;
@@ -153,38 +143,11 @@ __global__ void countCoverageKernel(
     coverage_counts[point_idx] = count;
 }
 
-// __global__ void coverageKernel(
-//     CudaSurfacePoint* points, size_t num_points,
-//     const CudaWaypoint* waypoints, size_t num_waypoints,
-//     float max_distance, float max_angle) {
-    
-//     int point_idx = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (point_idx >= num_points) return;
-
-//     // points[point_idx].covered = false;
-//     points[point_idx].coverage_count = 0;
-//     points[point_idx].first_covering_waypoint = -1;
-    
-//     for (int wp_idx = 0; wp_idx < num_waypoints; ++wp_idx) {
-//         if (isPointCovered(points[point_idx], waypoints[wp_idx], 
-//                           max_distance, max_angle)) 
-//         {
-//             points[point_idx].coverage_count++;
-
-//             if (points[point_idx].first_covering_waypoint == -1) 
-//             {
-//                 points[point_idx].first_covering_waypoint = wp_idx;
-//             }
-//             // points[point_idx].covered = true;
-//             // break; // Point covered by at least one waypoint
-//         }
-//     }
-// }
-
-void detailedCoverageKernelLauncher(
+void CoverageKernelLauncher(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
-    float radius, float depth,
+    ToolType tool_type,
+    ToolParameters params,
     char* coverage_matrix, int* coverage_counts) {
     
     // 启动第一个内核：计算覆盖矩阵
@@ -194,7 +157,7 @@ void detailedCoverageKernelLauncher(
     
     coverageKernelDetailed<<<grid_size, block_size>>>(
         points, num_points, waypoints, num_waypoints,
-        radius, depth, coverage_matrix);
+        tool_type, params, coverage_matrix);
     
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -214,32 +177,6 @@ void detailedCoverageKernelLauncher(
     
     cudaDeviceSynchronize();
 }
-
-// void coverageKernelLauncher(
-//     CudaSurfacePoint* points, size_t num_points,
-//     const CudaWaypoint* waypoints, size_t num_waypoints,
-//     float max_distance, float max_angle) {
-    
-//     const int block_size = 256;
-//     const int grid_size = (num_points + block_size - 1) / block_size;
-    
-//     coverageKernel<<<grid_size, block_size>>>(
-//         points, num_points, waypoints, num_waypoints, 
-//         max_distance, max_angle);
-    
-//     // Check for kernel launch errors
-//     cudaError_t err = cudaGetLastError();
-//     if (err != cudaSuccess) {
-//         fprintf(stderr, "Kernel launch error: %s\n", cudaGetErrorString(err));
-//         return;
-//     }
-    
-
-//     cudaDeviceSynchronize();
-//     if (err != cudaSuccess) {
-//         fprintf(stderr, "Kernel execution error: %s\n", cudaGetErrorString(err));
-//     }
-// }
 
 void setupCUDA() {
     cudaFree(0); // Initialize CUDA context

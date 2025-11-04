@@ -8,8 +8,8 @@ use_cuda: true
 robots: 
   - name: "circular_tool"
     type: "cylindrical"
-    radius: 0.05
-    depth: 0.01
+    radius: 0.005
+    depth: 0.001
 
 # List of scenes to test on
 scenes: 
