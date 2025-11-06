@@ -9,6 +9,8 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
 #include <benchmarking_3dcpp/alg/nuc.hpp>
+#include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
+#include <benchmarking_3dcpp/robot_model/circular.hpp>
 
 Benchmarking3DCPP::Benchmarking3DCPP(): 
     Node("benchmarking_3dcpp_node")
@@ -60,21 +62,26 @@ void Benchmarking3DCPP::initialize()
         scenes_[scene_name] = p_scene;
     }
 
+    std::cout << "We create all robots." << std::endl;
     robots_.clear();
     for(const auto& robot : config["robots"])
     {
         std::string robot_name = robot["name"].as<std::string>();
         std::cout << "Robot Name: " << robot_name << std::endl;
         std::shared_ptr<RobotModel> p_robot;
-        if(robot_name == "circular_tool")
+        if(robot_name == "circular")
         {
-            p_robot = std::make_shared<CircularTool>(robot_name, robot["radius"].as<double>(), robot["depth"].as<double>());
+            p_robot = std::make_shared<Circular>(robot_name, robot["radius"].as<double>(), robot["depth"].as<double>());
         }
-        else if(robot_name == "beam_like")
+        else if(robot_name == "line_lidar")
         {
             std::vector<std::pair<double, double> > temp;
-            double epsilon = 0.00001;
-            p_robot = std::make_shared<BeamLike>(robot_name, temp, epsilon);
+            p_robot = std::make_shared<LineLidar>(robot_name, 
+                robot["beam_num"].as<int>(), 
+                robot["max_distance"].as<double>(),
+                robot["pitch"].as<double>(),
+                robot["yaw_range"].as<double>(),
+                robot["epsilon"].as<double>());
         }
         else
         {
@@ -83,7 +90,9 @@ void Benchmarking3DCPP::initialize()
         }
         robots_[robot_name] = p_robot;
     }
+    std::cout << "Finish creating all robots." << std::endl;
 
+    std::cout << "We start creating algorithms." << std::endl;
     algorithms_.clear();
     for(const auto& algorithm : config["algorithms"])
     {
@@ -102,6 +111,7 @@ void Benchmarking3DCPP::initialize()
 
         algorithms_[algorithm_name] = p_algorithm;
     }
+    std::cout << "Finish creating all algorithms." << std::endl;
 
     // Initialize coverage calculator
     // double point_density = this->get_parameter("point_density").as_double();
@@ -119,6 +129,7 @@ void Benchmarking3DCPP::initialize()
 
 void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config)
 {
+    std::cout << "We start scheduling all tests. " << std::endl;
     for(int i = 0; i < num_robots; i++)
     {
         for(int j = 0; j < num_scenes; j++)
@@ -134,6 +145,7 @@ void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num
             }
         }
     }
+    std::cout << "We finish scheduling " << benchmarker_->getTaskNum() << " tests. " << std::endl;
 }
 
 void Benchmarking3DCPP::runSingleTest()

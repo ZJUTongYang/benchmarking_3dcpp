@@ -73,7 +73,7 @@ __device__ bool isCircularToolCovered(
     return true;
 }
 
-__device__ bool isBeamLikeToolCovered(
+__device__ bool isLineLidarToolCovered(
     const CudaSurfacePoint& point, 
     const CudaWaypoint& waypoint, 
     float epsilon
@@ -91,8 +91,8 @@ __device__ bool checkCoverageByToolType(
     switch (tool_type) {
         case CIRCULAR_TOOL:
             return isCircularToolCovered(point, waypoint, params.param1, params.param2);
-        case BEAM_LIKE_TOOL:
-            return isBeamLikeToolCovered(point, waypoint, params.param3);
+        case LINE_LIDAR_TOOL:
+            return isLineLidarToolCovered(point, waypoint, params.param3);
         default:
             return false;
     }

@@ -2,15 +2,22 @@
 version: "1.0"
 description: "3D coverage path planning benchmarking configuration"
 point_density: 20000.0
-use_cuda: true
+use_cuda: false
 
 # List of available robot models
 robots: 
-  - name: "circular_tool"
+  - name: "circular"
     type: "cylindrical"
-    radius: 0.005
-    depth: 0.001
+    radius: 0.005 # unit: m
+    depth: 0.001 # unit: m
 
+  - name: "line_lidar"
+    beam_num: 100
+    max_distance: 10 # unit: m
+    pitch: -90.0 # unit: degree
+    yaw_range: 120.0 # unit: degree
+    epsilon: 0.00001 # This determines whether a surface point is covered by a beam
+    
 # List of scenes to test on
 scenes: 
   - name: "remeshed_saddle"

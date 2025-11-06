@@ -20,7 +20,7 @@ struct CudaWaypoint {
 enum ToolType
 {
     CIRCULAR_TOOL = 0, 
-    BEAM_LIKE_TOOL = 1
+    LINE_LIDAR_TOOL = 1
 };
 
 struct ToolParameters{

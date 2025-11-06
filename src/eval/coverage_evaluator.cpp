@@ -4,7 +4,8 @@
 #include <execution>
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <benchmarking_3dcpp/robot_model.hpp>
+#include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
+#include <benchmarking_3dcpp/robot_model/circular.hpp>
 
 #ifdef USE_CUDA
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
@@ -12,12 +13,12 @@
 
 // 在 coverage_evaluator.cpp 中添加
 ToolType getToolTypeFromString(const std::string& tool_name) {
-    if (tool_name == "circular_tool") {
+    if (tool_name == "circular") {
         return CIRCULAR_TOOL;
-    } else if (tool_name == "beam_like") {
-        return BEAM_LIKE_TOOL;
+    } else if (tool_name == "line_lidar") {
+        return LINE_LIDAR_TOOL;
     } else {
-        // 默认使用CircularTool
+        // 默认使用Circular
         RCLCPP_WARN(rclcpp::get_logger("CoverageEvaluator"), 
                    "Unknown tool type: %s, using CIRCULAR_TOOL as default", tool_name.c_str());
         return CIRCULAR_TOOL;
@@ -27,17 +28,17 @@ ToolType getToolTypeFromString(const std::string& tool_name) {
 ToolParameters getToolParameters(std::shared_ptr<RobotModel> robot_model) {
     ToolParameters params = {0.0f, 0.0f, 0.0f};
     
-    auto circular_tool = std::dynamic_pointer_cast<CircularTool>(robot_model);
+    auto circular_tool = std::dynamic_pointer_cast<Circular>(robot_model);
     if (circular_tool) {
         params.param1 = static_cast<float>(circular_tool->getRadius());
         params.param2 = static_cast<float>(circular_tool->getDepth());
         return params;
     }
     
-    auto beam_like = std::dynamic_pointer_cast<BeamLike>(robot_model);
-    if (beam_like) {
-        // 假设BeamLike有getEpsilon方法
-        // params.param3 = static_cast<float>(beam_like->getEpsilon());
+    auto line_lidar = std::dynamic_pointer_cast<LineLidar>(robot_model);
+    if (line_lidar) {
+        // 假设LineLidar有getEpsilon方法
+        // params.param3 = static_cast<float>(line_lidar->getEpsilon());
         return params;
     }
     
@@ -89,7 +90,7 @@ void CoverageEvaluator::eval(int current_test_id,
 {
     std::shared_ptr<GeometryData> surface = tasks_[current_test_id].p_surface;
     const std::vector<RobotWaypoint>& path = tasks_[current_test_id].result.robot_path;
-    double max_distance = tasks_[current_test_id].robot.tool_radius;
+    // double max_distance = tasks_[current_test_id].robot.tool_radius;
     
     rclcpp::Time t1 = rclcpp::Clock().now();
     // Calculate coverage
@@ -101,13 +102,11 @@ void CoverageEvaluator::eval(int current_test_id,
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
                                             p_robot_model);
     } else {
-        coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path,
-                                           max_distance);
+        coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
     }
 #else
     std::cout << "We do not have CUDA" << std::endl;
-    coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path,
-                                           max_distance);
+    coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
 #endif
 
     rclcpp::Time t2 = rclcpp::Clock().now();
@@ -158,11 +157,10 @@ void CoverageEvaluator::eval(int current_test_id,
 std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
     const std::shared_ptr<RobotModel>& p_robot_model,
     const std::vector<SurfacePoint>& surface_points,
-    const std::vector<RobotWaypoint>& path,
-    double max_distance) {
+    const std::vector<RobotWaypoint>& path) {
     
     std::vector<std::vector<int> > coverage_indices(surface_points.size());
-    const double max_distance_sq = max_distance * max_distance;
+    // const double max_distance_sq = max_distance * max_distance;
     
     // Parallelize over surface points
     std::for_each(std::execution::par_unseq,
@@ -182,7 +180,6 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
     });
     
     return coverage_indices;
-    // return coverage_mask;
 }
 
 #ifdef USE_CUDA
@@ -352,14 +349,7 @@ void CoverageEvaluator::registerATest(int index, const std::string& robot_name, 
             // 3. 检查当前机器人的 "name" 是否匹配
             // robot_node["name"].as<std::string>() 会将YAML节点转换为C++字符串
             if (robot_node["name"] && robot_node["name"].as<std::string>() == robot_name) {
-                // 4. 如果匹配，获取其 "radius"
-                if (robot_node["radius"]) {
-                    new_task.robot.tool_radius = robot_node["radius"].as<double>();
-                    robot_found = true;
-                } else {
-                    // 找到了机器人，但它没有 radius 属性
-                    throw std::runtime_error("Robot '" + robot_name + "' found, but it has no 'radius' property.");
-                }
+                robot_found = true;
                 break; // 找到后就退出循环
             }
         }

@@ -1,7 +1,7 @@
-#include <benchmarking_3dcpp/robot_model.hpp>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/robot_model/circular.hpp>
 
-bool CircularTool::isPointCovered(const SurfacePoint& point, const RobotWaypoint& waypoint) const
+
+bool Circular::isPointCovered(const SurfacePoint& point, const RobotWaypoint& waypoint) const
 {
     // 1. 获取工具在世界坐标系下的主轴方向向量
     Eigen::Vector3d tool_direction = waypoint.orientation * -Eigen::Vector3d::UnitZ();
@@ -34,10 +34,4 @@ bool CircularTool::isPointCovered(const SurfacePoint& point, const RobotWaypoint
 
     // 如果所有条件都满足，则点被覆盖
     return true;
-}
-
-bool BeamLike::isPointCovered(const SurfacePoint& point, const RobotWaypoint& waypoint) const
-{
-    throw std::runtime_error("BeamLike::isPointCovered is not implemented yet.");
-    return false;
 }

@@ -10,7 +10,7 @@
 #include <benchmarking_3dcpp/scene.hpp>
 #include <H5Cpp.h>
 #include <benchmarking_3dcpp/viz/benchmarking_viz.hpp>
-#include <benchmarking_3dcpp/robot_model.hpp>
+#include <benchmarking_3dcpp/robot_model/robot_model.hpp>
 
 struct Task
 {
@@ -33,8 +33,6 @@ public:
     void eval(int current_test_id, 
         const std::shared_ptr<RobotModel>& p_robot_model,
         const std::vector<SurfacePoint>& surface_points);
-
-    // void calculateCoverage(int current_test_id);
 
     void registerATest(int index, const std::string& robot_name, const std::string& scene_name, 
         const std::string& algorithm_name, const YAML::Node& config, 
@@ -60,7 +58,7 @@ public:
         tasks_[test_id].result = *solution;
     }
 
-    int getTaskNum() const
+    inline int getTaskNum() const
     {
         return tasks_.size();
     }
@@ -75,8 +73,7 @@ private:
     std::vector<std::vector<int> > calculateCoverageCPU(
         const std::shared_ptr<RobotModel>& p_robot_model,
         const std::vector<SurfacePoint>& surface_points,
-        const std::vector<RobotWaypoint>& path,
-        double max_distance);
+        const std::vector<RobotWaypoint>& path);
         
 #ifdef USE_CUDA 
     std::vector<std::vector<int> > calculateCoverageCUDA(
