@@ -24,6 +24,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(nuc_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(std_srvs REQUIRED)
 
 find_package(Open3D REQUIRED)
 
@@ -131,6 +132,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
   nuc_msgs
   Open3D
   spdlog
+  std_srvs
 )
 
 add_executable(benchmarking_viz_node
@@ -151,6 +153,9 @@ target_link_libraries(benchmarking_viz_node
 ament_target_dependencies(benchmarking_viz_node
   rclcpp
   tf2_eigen
+  visualization_msgs
+  std_srvs
+  sensor_msgs
 )
 
 # Add compiler flags for OpenMP
