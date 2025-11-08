@@ -105,6 +105,7 @@ add_executable(benchmarking_3dcpp_node
   src/robot_model/robot_model.cpp
   src/robot_model/circular.cpp
   src/robot_model/line_lidar.cpp
+  src/utils/h5_helper.cpp
   src/alg/nuc.cpp)
 
 if(USE_CUDA)
@@ -138,6 +139,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
 add_executable(benchmarking_viz_node
   src/benchmarking_viz_node.cpp
   src/viz/benchmarking_viz.cpp
+  src/utils/h5_helper.cpp
 )
 
 target_include_directories(benchmarking_viz_node PRIVATE

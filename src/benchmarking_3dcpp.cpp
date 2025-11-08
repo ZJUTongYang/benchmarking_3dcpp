@@ -11,6 +11,7 @@
 #include <benchmarking_3dcpp/alg/nuc.hpp>
 #include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
 #include <benchmarking_3dcpp/robot_model/circular.hpp>
+#include <benchmarking_3dcpp/utils/h5_helper.hpp>
 
 Benchmarking3DCPP::Benchmarking3DCPP(): 
     Node("benchmarking_3dcpp_node")
