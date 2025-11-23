@@ -6,6 +6,7 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <benchmarking_3dcpp/utils/h5_helper.hpp>
+#include <std_msgs/msg/string.hpp>
 
 BenchmarkingViz::BenchmarkingViz():Node("benchmarking_viz_node")
 {
@@ -21,22 +22,18 @@ BenchmarkingViz::BenchmarkingViz():Node("benchmarking_viz_node")
         "surface_pointcloud", 10
     );
 
-    // Service to trigger loading
-    load_viz_service_ = this->create_service<std_srvs::srv::Trigger>(
+    // Subscriber to trigger loading
+    load_viz_sub_ = this->create_subscription<std_msgs::msg::String>(
         "load_and_visualize_h5",
-        std::bind(&BenchmarkingViz::handleLoadVizService, this, std::placeholders::_1, std::placeholders::_2));
+        1,
+        std::bind(&BenchmarkingViz::loadVizCallback, this, std::placeholders::_1));
 }
 
 
-void BenchmarkingViz::handleLoadVizService(
-    const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+void BenchmarkingViz::loadVizCallback(const std_msgs::msg::String::SharedPtr msg)
 {
-    (void)request; // Unused
-
-    // --- 在这里指定你要加载的 HDF5 文件 ---
-    // 你可以从服务请求中获取文件名，或者硬编码一个用于测试
-    std::string filename = "your_robot_your_scene_your_algorithm.h5"; // <--- 修改为你的文件名
+    // This is the h5 file name to inspect
+    std::string filename = msg->data; 
     
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmarking_3dcpp");
     std::filesystem::path file_fullname = std::filesystem::path(package_share_directory) / "output" / filename;
@@ -45,8 +42,6 @@ void BenchmarkingViz::handleLoadVizService(
 
     if (!std::filesystem::exists(file_fullname)) {
         RCLCPP_ERROR(this->get_logger(), "File not found: %s", file_fullname.c_str());
-        response->success = false;
-        response->message = "File not found: " + file_fullname.string();
         return;
     }
 
@@ -56,15 +51,10 @@ void BenchmarkingViz::handleLoadVizService(
             robot_name.c_str(), scene_name.c_str(), alg_name.c_str());
         data_is_loaded_ = true;
         visualizeLoadedData(); // 加载成功后立即发布
-        response->success = true;
-        response->message = "Successfully loaded and visualized: " + file_fullname.string();
     } else {
         RCLCPP_ERROR(this->get_logger(), "Failed to load HDF5 file.");
-        response->success = false;
-        response->message = "Failed to load HDF5 file: " + file_fullname.string();
     }
 }
-
 
 void BenchmarkingViz::visualizeLoadedData()
 {
@@ -73,53 +63,12 @@ void BenchmarkingViz::visualizeLoadedData()
         return;
     }
 
-    // 1. 发布点云
+    // Publish the coverage path
+    // TODO: the width of the path can be the same as the robot's footprint
     sensor_msgs::msg::PointCloud2 cloud_msg = createPointCloud2Msg(*loaded_surface_points_, loaded_result_.point_covered_num);
     cloud_msg.header.stamp = this->now();
     cloud_msg.header.frame_id = "world"; // 确保与 RViz 中的 Fixed Frame 一致
     pointcloud_pub_->publish(cloud_msg);
-
-    // // 2. 发布覆盖率标记
-    // visualization_msgs::msg::MarkerArray markers;
-    
-    // visualization_msgs::msg::Marker covered_marker;
-    // covered_marker.header.frame_id = "world";
-    // covered_marker.header.stamp = this->now();
-    // covered_marker.ns = "coverage_points";
-    // covered_marker.id = 0;
-    // covered_marker.type = visualization_msgs::msg::Marker::POINTS;
-    // covered_marker.action = visualization_msgs::msg::Marker::ADD;
-    // covered_marker.pose.orientation.w = 1.0;
-    // covered_marker.scale.x = 0.005;
-    // covered_marker.scale.y = 0.005;
-    // covered_marker.color.g = 1.0;
-    // covered_marker.color.a = 1.0;
-    
-    // visualization_msgs::msg::Marker uncovered_marker = covered_marker;
-    // uncovered_marker.id = 1;
-    // uncovered_marker.color.r = 1.0;
-    // uncovered_marker.color.g = 0.0;
-
-    // for(size_t i = 0; i < loaded_surface_points_->size(); ++i)
-    // {
-    //     geometry_msgs::msg::Point p;
-    //     p.x = (*loaded_surface_points_)[i].position.x();
-    //     p.y = (*loaded_surface_points_)[i].position.y();
-    //     p.z = (*loaded_surface_points_)[i].position.z();
-
-    //     if(loaded_result_.coverage_mask[i])
-    //     {
-    //         covered_marker.points.push_back(p);
-    //     }
-    //     else
-    //     {
-    //         uncovered_marker.points.push_back(p);
-    //     }
-    // }
-    
-    // markers.markers.push_back(covered_marker);
-    // markers.markers.push_back(uncovered_marker);
-    // coverage_pub_->publish(markers);
 
     // 3. 发布机器人路径
     if (!loaded_result_.robot_path.empty()) {
@@ -149,7 +98,6 @@ void BenchmarkingViz::visualizeLoadedData()
     RCLCPP_INFO(this->get_logger(), "Published visualization data.");
 }
 
-
 sensor_msgs::msg::PointCloud2 BenchmarkingViz::createPointCloud2Msg(const std::vector<SurfacePoint>& points, const std::vector<int>& point_covered_num)
 {
     sensor_msgs::msg::PointCloud2 cloud_msg;
@@ -165,9 +113,8 @@ sensor_msgs::msg::PointCloud2 BenchmarkingViz::createPointCloud2Msg(const std::v
     }
 
     sensor_msgs::PointCloud2Modifier modifier(cloud_msg);
-    modifier.setPointCloud2FieldsByString(1, "xyz", "rgb"); // 添加 xyz 和 rgb 字段
+    modifier.setPointCloud2FieldsByString(2, "xyz", "rgb"); // add xyz and rgb 
     modifier.resize(points.size());
-
     sensor_msgs::PointCloud2Iterator<float> iter_x(cloud_msg, "x");
     sensor_msgs::PointCloud2Iterator<float> iter_y(cloud_msg, "y");
     sensor_msgs::PointCloud2Iterator<float> iter_z(cloud_msg, "z");
@@ -180,9 +127,9 @@ sensor_msgs::msg::PointCloud2 BenchmarkingViz::createPointCloud2Msg(const std::v
     if (!point_covered_num.empty()) {
         max_coverage = *std::max_element(point_covered_num.begin(), point_covered_num.end());
     }
-
     // All points are not covered
     if (max_coverage == 0) {
+        std::cout << "All points are uncovered. We draw a blue cloud" << std::endl;
         for (size_t i = 0; i < points.size(); ++i, ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b) {
             *iter_x = points[i].position.x();
             *iter_y = points[i].position.y();

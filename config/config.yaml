@@ -8,8 +8,8 @@ use_cuda: false
 robots: 
   - name: "circular"
     type: "cylindrical"
-    radius: 0.005 # unit: m
-    depth: 0.001 # unit: m
+    radius: 0.05 # unit: m
+    depth: 0.01 # unit: m
 
   - name: "line_lidar"
     beam_num: 100
