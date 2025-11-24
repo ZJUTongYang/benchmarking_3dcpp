@@ -1,4 +1,6 @@
 # Main configuration for the benchmarking platform
+# Please note that all data (different surfaces, tools, etc) should be in the same unit
+
 version: "1.0"
 description: "3D coverage path planning benchmarking configuration"
 point_density: 20000.0
