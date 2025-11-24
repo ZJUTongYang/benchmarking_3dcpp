@@ -1,0 +1,14 @@
+
+# For compatibility, we provide multiple input interfaces. 
+# Typically, an algorithm requires only one surface representation, but multiple representations of the same surface can be also provided if needed. 
+# Please note that these algorithms may later run independently, so the information in the interface should be minimised. 
+shape_msgs/Mesh mesh
+sensor_msgs/PointCloud2 pointcloud
+SplineSurface spline
+
+# The tool info is a string of yaml struct, so the algorithm can freely get any information about the tool model
+string tool_info
+
+---
+
+nav_msgs/Path coverage
