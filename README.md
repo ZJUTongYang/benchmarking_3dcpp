@@ -41,6 +41,12 @@ In robotics, particularly for tasks like cleaning, painting, and inspection on 3
   sudo apt install libglfw3 libglfw3-dev
   ```
 
+- **TBB**
+
+  ```bash
+  sudo apt-get install libtbb-dev
+  ```
+
 ### Recommended
 
 - **CUDA (e.g., 11.8)** for accelerated computation.
