@@ -129,9 +129,8 @@ After a while, you will get results like:
 Now the evaulation hdf5 file has been store in the shared folder of the benchmarking platform. Launch a viz node and provide it with the file name.
 
 ```
-ros2 launch benchmarking_3dcpp viz.launch.py
-ros2 topic pub -1 /load_and_visualize_h5 std_msgs/msg/String "'data': 'circular_remeshed_saddle
-_Yang2023Template.h5' "
+ros2 launch benchmarking_3dcpp viz.launch.py # rviz2 will be also launched here
+ros2 topic pub -1 /load_and_visualize_h5 std_msgs/msg/String "'data': 'circular_remeshed_saddle_Yang2023Template.h5' "
 ```
 
 Ensure that the Fixed Frame in Rviz2 is set to world. Then, add the display topics "/path_visualization" and "surface_pointcloud". 
