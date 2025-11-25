@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #endif
 
+#include <benchmarking_3dcpp/common_types.hpp>
 #include <Eigen/Core>
 
 struct CudaSurfacePoint {
@@ -15,23 +16,6 @@ struct CudaWaypoint {
     float x, y, z;
     float qx, qy, qz, qw;
     float coverage_radius;
-};
-
-enum ToolType
-{
-    CIRCULAR_TOOL = 0, 
-    LINE_LIDAR_TOOL = 1
-};
-
-struct ToolParameters{
-    float param1;
-    float param2;
-    float param3;
-};
-
-struct CoverageConfig {
-    ToolType tool_type;
-    ToolParameters params;
 };
 
 extern "C" {

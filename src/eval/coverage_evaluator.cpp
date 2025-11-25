@@ -1,11 +1,12 @@
+#include <algorithm>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <benchmarking_3dcpp/common_types.hpp>
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
-#include <algorithm>
-#include <execution>
-#include <rclcpp/rclcpp.hpp>
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
 #include <benchmarking_3dcpp/robot_model/circular.hpp>
+#include <execution>
+#include <rclcpp/rclcpp.hpp>
 
 #ifdef USE_CUDA
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>

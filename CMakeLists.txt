@@ -116,7 +116,7 @@ endif()
 
 # Link CUDA libraries
 target_link_libraries(benchmarking_3dcpp_node
-    ${TBB_LIBRARIES}
+    TBB::tbb
     yaml-cpp
     ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES}
