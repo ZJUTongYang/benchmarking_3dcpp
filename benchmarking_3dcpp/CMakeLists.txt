@@ -25,6 +25,7 @@ find_package(nuc_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(benchmarking_3dcpp_interfaces REQUIRED)
 
 find_package(Open3D REQUIRED)
 
@@ -106,7 +107,7 @@ add_executable(benchmarking_3dcpp_node
   src/robot_model/circular.cpp
   src/robot_model/line_lidar.cpp
   src/utils/h5_helper.cpp
-  src/alg/nuc.cpp)
+  src/alg/yang2023template.cpp)
 
 if(USE_CUDA)
     target_link_libraries(benchmarking_3dcpp_node
@@ -134,6 +135,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
   Open3D
   spdlog
   std_srvs
+  benchmarking_3dcpp_interfaces
 )
 
 add_executable(benchmarking_viz_node

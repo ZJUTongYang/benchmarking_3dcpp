@@ -8,7 +8,7 @@
 #include <yaml-cpp/yaml.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
-#include <benchmarking_3dcpp/alg/nuc.hpp>
+#include <benchmarking_3dcpp/alg/yang2023template.hpp>
 #include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
 #include <benchmarking_3dcpp/robot_model/circular.hpp>
 #include <benchmarking_3dcpp/utils/h5_helper.hpp>
@@ -86,7 +86,7 @@ void Benchmarking3DCPP::initialize()
         }
         else
         {
-            std::cout << "YT: error, we do not support this robot: " << robot_name << std::endl;
+            std::cout << "Error, we do not support this robot: " << robot_name << std::endl;
             return ;
         }
         robots_[robot_name] = p_robot;
@@ -102,11 +102,11 @@ void Benchmarking3DCPP::initialize()
         std::shared_ptr<CoverageAlgorithm> p_algorithm;
         if(algorithm_name == "Yang2023Template")
         {
-            p_algorithm = std::make_shared<NUCAlgorithm>(this->shared_from_this());
+            p_algorithm = std::make_shared<Yang2023Template>(this->shared_from_this());
         }
         else
         {
-            std::cout << "YT: error, we do not support this algorithm: " << algorithm_name << std::endl;
+            std::cout << "Error, we do not support this algorithm: " << algorithm_name << std::endl;
             return ;
         }
 
