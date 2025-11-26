@@ -97,7 +97,7 @@ void CoverageEvaluator::eval(int current_test_id,
     // Calculate coverage
     std::vector<std::vector<int>> coverage_indices;
 #ifdef USE_CUDA
-    std::cout << "We have CUDA" << std::endl;
+    std::cout << "We use CUDA" << std::endl;
 
     if (use_cuda_) {
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
@@ -106,7 +106,7 @@ void CoverageEvaluator::eval(int current_test_id,
         coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
     }
 #else
-    std::cout << "We do not have CUDA" << std::endl;
+    std::cout << "We do not use CUDA" << std::endl;
     coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
 #endif
 
@@ -139,7 +139,7 @@ void CoverageEvaluator::eval(int current_test_id,
     tasks_[current_test_id].result.total_points = surface_points.size();
     tasks_[current_test_id].result.covered_points = covered_count;
 
-    // 可选：输出一些统计信息
+    // Print some statistics
     int max_coverage = 0;
     double avg_coverage = 0.0;
     for (const auto& count : tasks_[current_test_id].result.point_covered_num) {

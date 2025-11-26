@@ -66,7 +66,7 @@ void NUCAlgorithm::execute(std::shared_ptr<GeometryData> input)
 // void NUCAlgorithm::resultCallback(std::shared_future<nuc_msgs::srv::GetNuc::Response::SharedPtr> future)
 void NUCAlgorithm::resultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future)
 {
-    std::cout << "the platform enters callback" << std::endl;
+    std::cout << "the platform just gets the path callback. " << std::endl;
     auto end_time = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time_);
