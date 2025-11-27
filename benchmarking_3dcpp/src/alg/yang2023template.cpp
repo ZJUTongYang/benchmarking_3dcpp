@@ -10,15 +10,8 @@ using namespace std::chrono_literals;
 Yang2023Template::Yang2023Template(rclcpp::Node::SharedPtr node): 
     node_(node) {
     // Create client
-    // client_ = node_->create_client<nuc_msgs::srv::GetNuc>("get_nuc");
     std::string service_name = "get_"+getName()+"_benchmark";
     client_ = node_->create_client<benchmarking_3dcpp_interfaces::srv::GetNuc>(service_name);
-    
-    // Create publishers for visualization
-    // path_publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-        // "coverage_path_visualization", 10);
-    // path_publisher_raw_ = node_->create_publisher<nav_msgs::msg::Path>(
-    //     "coverage_path", 10);
     
     std::string msg = getName() + " Client initialized";
     RCLCPP_INFO(node_->get_logger(), "%s", msg.c_str());
@@ -30,15 +23,12 @@ void Yang2023Template::execute(std::shared_ptr<GeometryData> input)
     if(!isValidInput(input))
     {
         std::cout << "Input data to the algorithm is not suitable" << std::endl;
-        // return result;
         return ;
     }
 
     start_time_ = std::chrono::high_resolution_clock::now();
 
-    // nuc_msgs::srv::GetNuc::Request request;
     benchmarking_3dcpp_interfaces::srv::GetNuc::Request request;
-    // request.frame_id = "not_in_use_to_remove";
 
     std::shared_ptr<TriangleMeshData> p_tri_mesh_data = std::dynamic_pointer_cast<TriangleMeshData>(input);
     std::shared_ptr<open3d::geometry::TriangleMesh> p_mesh = p_tri_mesh_data->getData();
@@ -64,7 +54,6 @@ void Yang2023Template::execute(std::shared_ptr<GeometryData> input)
     auto request_ptr = std::make_shared<benchmarking_3dcpp_interfaces::srv::GetNuc::Request>(request);
 
     // We don't know when the service will be ready, so we have to set up a callback function
-
     auto result_future = client_->async_send_request(request_ptr, 
         std::bind(&Yang2023Template::resultCallback, this, std::placeholders::_1));
 
@@ -89,7 +78,6 @@ void Yang2023Template::resultCallback(rclcpp::Client<benchmarking_3dcpp_interfac
     setSolution(result);
 
     std::cout << "Finish executing " << getName() << " with computation time " << result_->computation_time << "s." << std::endl;
-
 }
 
 std::shared_ptr<open3d::geometry::TriangleMesh> Yang2023Template::loadMesh(const std::string& file_path) 
