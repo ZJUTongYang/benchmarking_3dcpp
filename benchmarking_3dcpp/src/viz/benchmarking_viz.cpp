@@ -11,8 +11,8 @@
 BenchmarkingViz::BenchmarkingViz():Node("benchmarking_viz_node")
 {
     // Publishers
-    coverage_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-        "coverage_visualization", 10);
+    // coverage_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+    //     "coverage_visualization", 10);
 
     path_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "path_visualization", 10
@@ -46,12 +46,15 @@ void BenchmarkingViz::loadVizCallback(const std_msgs::msg::String::SharedPtr msg
     }
 
     std::string robot_name, scene_name, alg_name;
-    if (loadFromHDF5(file_fullname.string(), robot_name, scene_name, alg_name, loaded_surface_points_, loaded_result_)) {
+    if (loadFromHDF5(file_fullname.string(), robot_name, scene_name, alg_name, loaded_surface_points_, loaded_result_)) 
+    {
         RCLCPP_INFO(this->get_logger(), "Successfully loaded HDF5 file. Robot: %s, Scene: %s, Algorithm: %s", 
             robot_name.c_str(), scene_name.c_str(), alg_name.c_str());
         data_is_loaded_ = true;
-        visualizeLoadedData(); // 加载成功后立即发布
-    } else {
+        visualizeLoadedData(); 
+    } 
+    else 
+    {
         RCLCPP_ERROR(this->get_logger(), "Failed to load HDF5 file.");
     }
 }
@@ -67,10 +70,10 @@ void BenchmarkingViz::visualizeLoadedData()
     // TODO: the width of the path can be the same as the robot's footprint
     sensor_msgs::msg::PointCloud2 cloud_msg = createPointCloud2Msg(*loaded_surface_points_, loaded_result_.point_covered_num);
     cloud_msg.header.stamp = this->now();
-    cloud_msg.header.frame_id = "world"; // 确保与 RViz 中的 Fixed Frame 一致
+    cloud_msg.header.frame_id = "world";
     pointcloud_pub_->publish(cloud_msg);
 
-    // 3. 发布机器人路径
+    // publish the robot path
     if (!loaded_result_.robot_path.empty()) {
         visualization_msgs::msg::Marker path_marker;
         path_marker.header.frame_id = "world";
@@ -154,6 +157,11 @@ sensor_msgs::msg::PointCloud2 BenchmarkingViz::createPointCloud2Msg(const std::v
         b = static_cast<uint8_t>((1.0f - normalized_value) * 255.0f);
         r = static_cast<uint8_t>(normalized_value * 255.0f);
         g = 0; // the green channel
+
+        // If the poitn is covered only once, i.e., a good coverage, we show shallow gray
+        if (point_covered_num[i] == 1) {
+            r = g = b = 150;
+        }
 
         *iter_r = r;
         *iter_g = g;
