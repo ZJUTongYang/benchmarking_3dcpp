@@ -11,9 +11,6 @@
 BenchmarkingViz::BenchmarkingViz():Node("benchmarking_viz_node")
 {
     // Publishers
-    // coverage_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    //     "coverage_visualization", 10);
-
     path_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
         "path_visualization", 10
     );

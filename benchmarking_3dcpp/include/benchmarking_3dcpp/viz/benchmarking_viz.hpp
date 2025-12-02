@@ -15,14 +15,13 @@ public:
     BenchmarkingViz();
 
 private: 
-    // Publish the coloured point cloud 
-    // Idealy, regardless of the format of the surface, we have sampled it, 
-    // so we can visualize it as the point cloud
-    // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr coverage_pub_;
 
     // We publish the robot path (which should be a tf strip)
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr path_pub_;
 
+    // Publish the coloured point cloud 
+    // Idealy, regardless of the format of the surface, we have sampled it, 
+    // so we can visualize it as the point cloud
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub_;
 
     // Subscription to trigger loading and visualization
