@@ -3,7 +3,7 @@
 #include <string>
 
 LineLidar::LineLidar(std::string robot_name, 
-    int beam_num, double max_distance, double pitch, double yaw_range, double epsilon):
+    unsigned int beam_num, double max_distance, double pitch, double yaw_range, double epsilon):
     RobotModel(robot_name), beam_num_(beam_num), max_distance_(max_distance), 
     pitch_(pitch), yaw_range_(yaw_range), epsilon_(epsilon)
 {
@@ -25,7 +25,7 @@ LineLidar::LineLidar(std::string robot_name,
     // So the final beam orientation is
     // [cos(pitch)cos(yaw), sin(yaw), sin(pitch)cos(yaw)]^T
 
-    for(int i = 0; i < beam_num_; i++)
+    for(size_t i = 0; i < beam_num_; i++)
     {
         double current_yaw = - yaw_range_ / 2.0 + i * yaw_step;
         double yaw_rad = current_yaw * M_PI / 180.0;

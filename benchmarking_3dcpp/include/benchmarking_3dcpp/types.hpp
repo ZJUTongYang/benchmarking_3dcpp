@@ -45,6 +45,26 @@ struct RobotWaypoint {
     }
 };
 
+struct ToolParameters
+{
+    float param1;
+    float param2;
+    float param3;
+
+    int size_triple_array_param1;
+    float* float_triple_array_param1;
+
+    ToolParameters(): param1(0.0f), param2(0.0f), param3(0.0f), size_triple_array_param1(0), float_triple_array_param1(nullptr) {}
+
+    ~ToolParameters()
+    {
+        if (float_triple_array_param1 != nullptr)
+        {
+            delete[] float_triple_array_param1;
+        }
+    }
+};
+
 struct CoverageResult 
 {
     std::vector<RobotWaypoint> robot_path;

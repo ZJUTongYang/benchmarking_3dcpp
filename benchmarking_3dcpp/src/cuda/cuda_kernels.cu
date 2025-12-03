@@ -23,49 +23,67 @@ __device__ float3 quaternionRotateVector(float qx, float qy, float qz, float qw,
     return result;
 }
 
+__device__ CudaVec3 operator*(const CudaQuat& q, const CudaVec3& v)
+{
+    CudaVec3 q_vec(q.x, q.y, q.z);
+    float q_w = q.w;
+
+    CudaVec3 term1 = v;
+    CudaVec3 term2 = q_vec * (2.0f * q_vec.dot(v));
+    CudaVec3 term3 = q_vec.cross(v) * (2.0f * q_w);
+
+    return term1 + term2 + term3;
+}
+
 __device__ bool isCircularToolCovered(
     const CudaSurfacePoint& point,
     const CudaWaypoint& waypoint,
     float radius, float depth
 )
 {
-    // 1. 计算工具在世界坐标系下的主轴方向向量
+    // 计算工具在世界坐标系下的主轴方向向量
+    // Compute the main axis direction of the tool in the world coordinate system
     float3 tool_z_axis = make_float3(0.0f, 0.0f, -1.0f); // 工具的-Z方向
     float3 tool_direction = quaternionRotateVector(
-        waypoint.qx, waypoint.qy, waypoint.qz, waypoint.qw, tool_z_axis);
+        waypoint.orientation.x, waypoint.orientation.y, waypoint.orientation.z, waypoint.orientation.w, tool_z_axis);
 
-    // 2. 计算从工具中心到曲面点的向量
+    // 计算从工具中心到曲面点的向量
+    // Compute the vector from the tool center to the point of interest
     float3 vec_to_point = make_float3(
-        point.x - waypoint.x,
-        point.y - waypoint.y,
-        point.z - waypoint.z
+        point.position.x - waypoint.position.x,
+        point.position.y - waypoint.position.y,
+        point.position.z - waypoint.position.z
     );
 
-    // 3. 计算曲面点在工具轴线上的投影长度
+    // 计算曲面点在工具轴线上的投影长度
+    // the position of the closest point on the tool axis to the point
     float projection_length = 
         vec_to_point.x * tool_direction.x +
         vec_to_point.y * tool_direction.y +
         vec_to_point.z * tool_direction.z;
 
-    // 4. 检查投影点是否在工具的有效长度范围内 [0, depth]
+    float3 closest_point_on_axis = make_float3(
+        waypoint.position.x + projection_length * tool_direction.x,
+        waypoint.position.y + projection_length * tool_direction.y,
+        waypoint.position.z + projection_length * tool_direction.z
+    );
+
+    // 计算曲面点到工具轴线的最短距离（即径向距离）
+    // the shortest distance between the point and the tool axis
+    float dx = point.position.x - closest_point_on_axis.x;
+    float dy = point.position.y - closest_point_on_axis.y;
+    float dz = point.position.z - closest_point_on_axis.z;
+    float radial_distance_sq = dx*dx + dy*dy + dz*dz;
+
+    // We check all if-else in the end. Maybe faster for CUDA?
+
+    // 检查投影点是否在工具的有效长度范围内 [0, depth]
+    // check the distance
     if (projection_length < 0.0f || projection_length > depth) {
         return false;
     }
 
-    // 5. 计算工具轴线上离曲面点最近的点
-    float3 closest_point_on_axis = make_float3(
-        waypoint.x + projection_length * tool_direction.x,
-        waypoint.y + projection_length * tool_direction.y,
-        waypoint.z + projection_length * tool_direction.z
-    );
-
-    // 6. 计算曲面点到工具轴线的最短距离（即径向距离）
-    float dx = point.x - closest_point_on_axis.x;
-    float dy = point.y - closest_point_on_axis.y;
-    float dz = point.z - closest_point_on_axis.z;
-    float radial_distance_sq = dx*dx + dy*dy + dz*dz;
-
-    // 7. 检查径向距离是否在覆盖半径内
+    // 检查径向距离是否在覆盖半径内
     if (radial_distance_sq > radius) {
         return false;
     }
@@ -76,9 +94,39 @@ __device__ bool isCircularToolCovered(
 __device__ bool isLineLidarToolCovered(
     const CudaSurfacePoint& point, 
     const CudaWaypoint& waypoint, 
-    float epsilon
+    float max_sensing_distance, float epsilon, 
+    int beam_num, float* beam_direction
 )
 {
+    // For each line lidar sensor waypoint, we compute all the beams-point intersection in a single thread
+
+    CudaVec3 vec_to_point = point.position - waypoint.position;
+
+    // First we construct the beams' origin and heading direction
+    for (size_t i = 0; i < beam_num; i++) 
+    {
+        CudaVec3 local_dir_vec(beam_direction[3*i], beam_direction[3*i+1], beam_direction[3*i+2]);
+        const CudaQuat& waypoint_orientation = waypoint.orientation;
+
+        CudaVec3 beam_direction_world = waypoint_orientation * local_dir_vec;
+
+        float projection_length = vec_to_point.dot(beam_direction_world);
+
+        if (projection_length < 0.0f || projection_length > max_sensing_distance)
+        {
+            continue;
+        }
+
+        CudaVec3 closest_point_on_beam = waypoint.position + beam_direction_world * projection_length;
+        
+        float distance_to_beam_axis = (point.position - closest_point_on_beam).norm();
+
+        if (distance_to_beam_axis <= epsilon)
+        {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -86,13 +134,16 @@ __device__ bool checkCoverageByToolType(
     const CudaSurfacePoint& point, 
     const CudaWaypoint& waypoint, 
     ToolType tool_type, 
-    const ToolParameters& params)
+    const CudaToolParameters* params)
 {
     switch (tool_type) {
         case CIRCULAR_TOOL:
-            return isCircularToolCovered(point, waypoint, params.param1, params.param2);
+            // point, waypoint, radius, depth
+            return isCircularToolCovered(point, waypoint, params->param1, params->param2);
         case LINE_LIDAR_TOOL:
-            return isLineLidarToolCovered(point, waypoint, params.param3);
+            // point, waypoint, max_sensing_distance, epsilon, beam_num, beam_direction
+            return isLineLidarToolCovered(point, waypoint, params->param1, params->param2, 
+                params->size_triple_array_param1, params->float_triple_array_param1);
         default:
             return false;
     }
@@ -102,7 +153,7 @@ __global__ void coverageKernelDetailed(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
     ToolType tool_type,
-    ToolParameters params,
+    const CudaToolParameters* params,
     // float radius, float depth,
     char* coverage_matrix) {  // two-dim matrix: points × waypoints
     
@@ -126,29 +177,14 @@ __global__ void coverageKernelDetailed(
     coverage_matrix[point_idx * num_waypoints + wp_idx] = covered ? 1 : 0;
 }
 
-// 辅助内核：统计每个点的覆盖次数
-__global__ void countCoverageKernel(
-    const char* coverage_matrix, size_t num_points, size_t num_waypoints,
-    int* coverage_counts) {
-    
-    int point_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (point_idx >= num_points) return;
-    
-    int count = 0;
-    for (int wp_idx = 0; wp_idx < num_waypoints; ++wp_idx) {
-        if (coverage_matrix[point_idx * num_waypoints + wp_idx] == 1) {
-            count++;
-        }
-    }
-    coverage_counts[point_idx] = count;
-}
 
 void CoverageKernelLauncher(
     const CudaSurfacePoint* points, size_t num_points,
     const CudaWaypoint* waypoints, size_t num_waypoints,
     ToolType tool_type,
-    ToolParameters params,
-    char* coverage_matrix, int* coverage_counts) {
+    const CudaToolParameters* params,
+    char* coverage_matrix)
+{
     
     // 启动第一个内核：计算覆盖矩阵
     int total_pairs = num_points * num_waypoints;
@@ -164,11 +200,6 @@ void CoverageKernelLauncher(
         fprintf(stderr, "Coverage kernel launch error: %s\n", cudaGetErrorString(err));
         return;
     }
-    
-    // 启动第二个内核：统计覆盖次数
-    const int count_grid_size = (num_points + block_size - 1) / block_size;
-    countCoverageKernel<<<count_grid_size, block_size>>>(
-        coverage_matrix, num_points, num_waypoints, coverage_counts);
     
     err = cudaGetLastError();
     if (err != cudaSuccess) {

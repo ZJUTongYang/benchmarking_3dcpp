@@ -37,9 +37,7 @@ find_package(HDF5 REQUIRED COMPONENTS C CXX)
 
 # Enable CUDA if available
 find_package(CUDAToolkit QUIET)
-
-if(CMAKE_CUDA_COMPILER)
-
+if(CUDAToolkit_FOUND)
     add_compile_definitions(USE_CUDA)
 
     #enable cuda language
@@ -57,7 +55,7 @@ if(CMAKE_CUDA_COMPILER)
     
 else()
     set(USE_CUDA FALSE)
-    message(STATUS "CUDA not found, building CPU-only version")
+    message(WARNING "CUDA not found, building CPU-only version")
 endif()
 
 include_directories(

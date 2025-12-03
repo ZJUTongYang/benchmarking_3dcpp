@@ -12,22 +12,28 @@
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
 #endif
 
-// 在 coverage_evaluator.cpp 中添加
 ToolType getToolTypeFromString(const std::string& tool_name) {
-    if (tool_name == "circular") {
+    if (tool_name == "circular") 
+    {
         return CIRCULAR_TOOL;
-    } else if (tool_name == "line_lidar") {
+    } 
+    else if (tool_name == "line_lidar") 
+    {
         return LINE_LIDAR_TOOL;
-    } else {
+    } 
+    else 
+    {
         // 默认使用Circular
+        // Cirular by default
         RCLCPP_WARN(rclcpp::get_logger("CoverageEvaluator"), 
                    "Unknown tool type: %s, using CIRCULAR_TOOL as default", tool_name.c_str());
         return CIRCULAR_TOOL;
     }
 }
 
-ToolParameters getToolParameters(std::shared_ptr<RobotModel> robot_model) {
-    ToolParameters params = {0.0f, 0.0f, 0.0f};
+ToolParameters getToolParameters(std::shared_ptr<RobotModel> robot_model) 
+{
+    ToolParameters params;
     
     auto circular_tool = std::dynamic_pointer_cast<Circular>(robot_model);
     if (circular_tool) {
@@ -37,9 +43,14 @@ ToolParameters getToolParameters(std::shared_ptr<RobotModel> robot_model) {
     }
     
     auto line_lidar = std::dynamic_pointer_cast<LineLidar>(robot_model);
-    if (line_lidar) {
-        // 假设LineLidar有getEpsilon方法
-        // params.param3 = static_cast<float>(line_lidar->getEpsilon());
+    if (line_lidar) 
+    {
+        params.param1 = static_cast<float>(line_lidar->getMaxDistance());
+        params.param2 = static_cast<float>(line_lidar->getEpsilon());
+        params.size_triple_array_param1 = static_cast<int>(line_lidar->getBeamNum());
+        params.float_triple_array_param1 = new float[params.size_triple_array_param1 * 3];
+        line_lidar->getBeamsTripleArray(params.float_triple_array_param1);
+
         return params;
     }
     
@@ -161,7 +172,6 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
     const std::vector<RobotWaypoint>& path) {
     
     std::vector<std::vector<int> > coverage_indices(surface_points.size());
-    // const double max_distance_sq = max_distance * max_distance;
     
     // Parallelize over surface points
     std::for_each(std::execution::par_unseq,
@@ -190,7 +200,9 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     std::shared_ptr<RobotModel> the_tool) 
 {
     ToolType tool_type = getToolTypeFromString(the_tool->getName());
-    ToolParameters params = getToolParameters(the_tool);
+
+    // Now this struct has array pointers, so we have to allocate memory for it
+    ToolParameters h_params = getToolParameters(the_tool);
 
     size_t num_points = surface_points.size();
     size_t num_waypoints = path.size();
@@ -198,39 +210,78 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     // 转换数据到CUDA格式
     std::vector<CudaSurfacePoint> cuda_points;
     cuda_points.reserve(num_points);
-    for (const auto& point : surface_points) {
-        cuda_points.push_back({
-            static_cast<float>(point.position.x()),
-            static_cast<float>(point.position.y()),
-            static_cast<float>(point.position.z()),
-            static_cast<float>(point.normal.x()),
-            static_cast<float>(point.normal.y()),
-            static_cast<float>(point.normal.z())
-        });
+    for (const auto& point : surface_points) 
+    {
+        CudaSurfacePoint temp;
+        temp.position.x = static_cast<float>(point.position.x());
+        temp.position.y = static_cast<float>(point.position.y());
+        temp.position.z = static_cast<float>(point.position.z());
+        temp.normal.x = static_cast<float>(point.normal.x());
+        temp.normal.y = static_cast<float>(point.normal.y());
+        temp.normal.z = static_cast<float>(point.normal.z());
+        cuda_points.emplace_back(temp);
     }
     
     std::vector<CudaWaypoint> cuda_waypoints;
     cuda_waypoints.reserve(num_waypoints);
-    for (const auto& wp : path) {
-        cuda_waypoints.push_back({
-            static_cast<float>(wp.position.x()),
-            static_cast<float>(wp.position.y()),
-            static_cast<float>(wp.position.z()),
-            static_cast<float>(wp.orientation.x()),
-            static_cast<float>(wp.orientation.y()),
-            static_cast<float>(wp.orientation.z()),
-            static_cast<float>(wp.orientation.w()),
-            static_cast<float>(wp.coverage_radius)
-        });
+    for (const auto& wp : path) 
+    {
+        CudaWaypoint temp;
+        temp.position.x = static_cast<float>(wp.position.x());
+        temp.position.y = static_cast<float>(wp.position.y());
+        temp.position.z = static_cast<float>(wp.position.z());
+        temp.orientation.x = static_cast<float>(wp.orientation.x());
+        temp.orientation.y = static_cast<float>(wp.orientation.y());
+        temp.orientation.z = static_cast<float>(wp.orientation.z());
+        temp.orientation.w = static_cast<float>(wp.orientation.w());
+        temp.coverage_radius = static_cast<float>(wp.coverage_radius);
+        cuda_waypoints.emplace_back(temp);
     }
     
+    // Allocate GPU memory for Tool Parameters
+    float* d_float_array = nullptr;
+    if (h_params.size_triple_array_param1 > 0 && h_params.float_triple_array_param1 != nullptr) {
+        size_t array_size = h_params.size_triple_array_param1 * 3 * sizeof(float);
+        cudaError_t err = cudaMalloc(&d_float_array, array_size);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "cudaMalloc failed for params float array: %s\n", cudaGetErrorString(err));
+            return {};
+        }
+        err = cudaMemcpy(d_float_array, h_params.float_triple_array_param1, array_size, cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "cudaMemcpy failed for params float array: %s\n", cudaGetErrorString(err));
+            cudaFree(d_float_array);
+            return {};
+        }
+    }
+
+    CudaToolParameters d_params_struct;
+    d_params_struct.param1 = h_params.param1;
+    d_params_struct.param2 = h_params.param2;
+    d_params_struct.param3 = h_params.param3;
+    d_params_struct.size_triple_array_param1 = h_params.size_triple_array_param1;
+    d_params_struct.float_triple_array_param1 = d_float_array; // 指向设备内存
+
+    CudaToolParameters* d_params = nullptr;
+    cudaError_t err = cudaMalloc(&d_params, sizeof(CudaToolParameters));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed for params struct: %s\n", cudaGetErrorString(err));
+        if (d_float_array) cudaFree(d_float_array); // 清理已分配的数组内存
+        return {};
+    }
+    err = cudaMemcpy(d_params, &d_params_struct, sizeof(CudaToolParameters), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed for params struct: %s\n", cudaGetErrorString(err));
+        cudaFree(d_params);
+        if (d_float_array) cudaFree(d_float_array); // 清理已分配的数组内存
+        return {};
+    }
+
     // 分配GPU内存
     CudaSurfacePoint* d_points = nullptr;
     CudaWaypoint* d_waypoints = nullptr;
     char* d_coverage_matrix = nullptr;
-    int* d_coverage_counts = nullptr;
     
-    cudaError_t err;
     bool success = true;
     
     // 分配点数据内存
@@ -262,16 +313,6 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
             success = false;
         }
     }
-    
-    // 分配覆盖计数内存
-    err = cudaMalloc(&d_coverage_counts, num_points * sizeof(int));
-    if (err != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed for coverage counts: %s\n", cudaGetErrorString(err));
-        cudaFree(d_points);
-        cudaFree(d_waypoints);
-        cudaFree(d_coverage_matrix);
-        return std::vector<std::vector<int>>(num_points);
-    }
 
     // 复制数据到GPU
     if(success){
@@ -301,9 +342,9 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
         CoverageKernelLauncher(
             d_points, num_points,
             d_waypoints, num_waypoints,
-            tool_type, params,
-            d_coverage_matrix, d_coverage_counts);
-        
+            tool_type, d_params,
+            d_coverage_matrix);
+            
         // 将覆盖矩阵复制回主机
         err = cudaMemcpy(coverage_matrix.data(), d_coverage_matrix,
                         num_points * num_waypoints * sizeof(char),
@@ -329,8 +370,9 @@ std::vector<std::vector<int>> CoverageEvaluator::calculateCoverageCUDA(
     if (d_points) cudaFree(d_points);
     if (d_waypoints) cudaFree(d_waypoints);
     if (d_coverage_matrix) cudaFree(d_coverage_matrix);
-    if (d_coverage_counts) cudaFree(d_coverage_counts);
-    
+    if (d_float_array) cudaFree(d_float_array); // 释放动态数组
+    if (d_params) cudaFree(d_params);           // 释放参数结构体
+
     return coverage_indices;
 }
 #endif

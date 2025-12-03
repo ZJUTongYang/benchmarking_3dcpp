@@ -3,8 +3,8 @@
 
 version: "1.0"
 description: "3D coverage path planning benchmarking configuration"
-point_density: 20000.0
-use_cuda: false
+point_density: 50000.0
+use_cuda: true
 
 # List of available robot models
 robots: 
@@ -14,11 +14,11 @@ robots:
     depth: 0.01 # unit: m
 
   - name: "line_lidar"
-    beam_num: 100
+    beam_num: 10000 # This might be too many, but we are testing the computing performance
     max_distance: 10 # unit: m
     pitch: -90.0 # unit: degree
     yaw_range: 120.0 # unit: degree
-    epsilon: 0.00001 # This determines whether a surface point is covered by a beam
+    epsilon: 0.001 # This determines whether a surface point is covered by a beam
     
 # List of scenes to test on
 scenes: 
