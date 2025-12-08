@@ -27,19 +27,10 @@ public:
 private:
     rclcpp::Node::SharedPtr node_;
     
-    // void resultCallback(rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedFuture future);
     void resultCallback(rclcpp::Client<benchmarking_3dcpp_interfaces::srv::GetNuc>::SharedFuture future);
 
-    // bool requestCoveragePath(const std::string& mesh_file_path);
-    // void publishVisualization(const nav_msgs::msg::Path& path);
-
-    // rclcpp::Client<nuc_msgs::srv::GetNuc>::SharedPtr client_;
     rclcpp::Client<benchmarking_3dcpp_interfaces::srv::GetNuc>::SharedPtr client_;
-    // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr path_publisher_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_publisher_raw_;
     
     std::shared_ptr<open3d::geometry::TriangleMesh> loadMesh(const std::string& file_path);
-    // nuc_msgs::srv::GetNuc::Request createRequestFromMesh(
-    //     const open3d::geometry::TriangleMesh& mesh, 
-    //     const std::string& frame_id = "world");
 };

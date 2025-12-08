@@ -13,6 +13,24 @@
 #include <benchmarking_3dcpp/robot_model/circular.hpp>
 #include <benchmarking_3dcpp/utils/h5_helper.hpp>
 
+// We customize a yaml loading function so that we can load two-dim arrays as a std::vector<Eigen::Vector3d>
+namespace YAML{
+    template<>
+    struct convert<Eigen::Vector3d> 
+    {
+        static bool decode(const Node& node, Eigen::Vector3d& rhs) 
+        {
+            if(!node.IsSequence() || node.size() != 3) {
+                return false;
+            }
+            rhs.x() = node[0].as<double>();
+            rhs.y() = node[1].as<double>();
+            rhs.z() = node[2].as<double>();
+            return true;
+        }
+    };
+}
+
 Benchmarking3DCPP::Benchmarking3DCPP(): 
     Node("benchmarking_3dcpp_node")
 {
@@ -76,13 +94,14 @@ void Benchmarking3DCPP::initialize()
         }
         else if(robot_name == "line_lidar")
         {
-            std::vector<std::pair<double, double> > temp;
+            std::vector<Eigen::Vector3d> given_beam_vectors = robot["given_beam_vectors"].as<std::vector<Eigen::Vector3d>>();
+            
             p_robot = std::make_shared<LineLidar>(robot_name, 
-                robot["beam_num"].as<int>(), 
                 robot["max_distance"].as<double>(),
-                robot["pitch"].as<double>(),
-                robot["yaw_range"].as<double>(),
-                robot["epsilon"].as<double>());
+                robot["epsilon"].as<double>(),
+                robot["beam_num"].as<int>(),
+                given_beam_vectors
+            );
         }
         else
         {
@@ -115,9 +134,11 @@ void Benchmarking3DCPP::initialize()
     std::cout << "Finish creating all algorithms." << std::endl;
 
     // Initialize coverage calculator
-    // double point_density = this->get_parameter("point_density").as_double();
-    bool use_cuda = config["use_cuda"].as<bool>();
-    benchmarker_ = std::make_unique<CoverageEvaluator>(use_cuda, point_density);
+    use_cuda_ = config["use_cuda"].as<bool>();
+#ifndef USE_CUDA
+    use_cuda_ = false;
+#endif
+    benchmarker_ = std::make_unique<CoverageEvaluator>(use_cuda_, point_density);
 
     int num_robots = config["robots"].size();
     int num_scenes = config["scenes"].size();
@@ -210,8 +231,13 @@ void Benchmarking3DCPP::saveEvalToFile(int task_id)
     std::string robot_name = the_task.robot.name;
     std::string scene_name = the_task.scene.name;
     std::string alg_name = the_task.algorithm.name;
+    std::string compute_method;
+    if(use_cuda_)
+        compute_method = "cuda";
+    else
+        compute_method = "cpu";
 
-    std::string filename = robot_name + "_" + scene_name + "_" + alg_name + ".h5";
+    std::string filename = robot_name + "_" + scene_name + "_" + alg_name + "_" + compute_method + ".h5";
 
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmarking_3dcpp");
     std::filesystem::path file_fullname = std::filesystem::path(package_share_directory) / "output" / filename;
@@ -227,6 +253,7 @@ void Benchmarking3DCPP::saveEvalToFile(int task_id)
     bool success = saveToHDF5(file_fullname, the_task.robot.name, the_task.scene.name, 
             the_task.algorithm.name, 
             scenes_[the_task.scene.name]->surface_points_, 
+            the_task.coverage_indices,
             the_task.result);
     if(success)
     {

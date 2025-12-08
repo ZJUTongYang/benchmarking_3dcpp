@@ -5,34 +5,19 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-__device__ float3 quaternionRotateVector(float qx, float qy, float qz, float qw, float3 v) {
-    // Optimized quaternion-vector rotation
-    float uvx = qy * v.z - qz * v.y;
-    float uvy = qz * v.x - qx * v.z;
-    float uvz = qx * v.y - qy * v.x;
-    
-    float uuvx = qy * uvz - qz * uvy;
-    float uuvy = qz * uvx - qx * uvz;
-    float uuvz = qx * uvy - qy * uvx;
-    
-    float3 result;
-    result.x = v.x + 2.0f * (qw * uvx + qx * uuvx);
-    result.y = v.y + 2.0f * (qw * uvy + qy * uuvy);
-    result.z = v.z + 2.0f * (qw * uvz + qz * uuvz);
-    
-    return result;
-}
-
 __device__ CudaVec3 operator*(const CudaQuat& q, const CudaVec3& v)
 {
-    CudaVec3 q_vec(q.x, q.y, q.z);
-    float q_w = q.w;
-
-    CudaVec3 term1 = v;
-    CudaVec3 term2 = q_vec * (2.0f * q_vec.dot(v));
-    CudaVec3 term3 = q_vec.cross(v) * (2.0f * q_w);
-
-    return term1 + term2 + term3;
+    CudaVec3 u(q.x, q.y, q.z);
+    float w = q.w;
+    
+    // u × v
+    CudaVec3 uv = u.cross(v);
+    
+    // u × (u × v)
+    CudaVec3 uuv = u.cross(uv);
+    
+    // v' = v + 2 * w * (u × v) + 2 * (u × (u × v))
+    return v + uv * (2.0f * w) + uuv * 2.0f;
 }
 
 __device__ bool isCircularToolCovered(
@@ -43,9 +28,9 @@ __device__ bool isCircularToolCovered(
 {
     // 计算工具在世界坐标系下的主轴方向向量
     // Compute the main axis direction of the tool in the world coordinate system
-    float3 tool_z_axis = make_float3(0.0f, 0.0f, -1.0f); // 工具的-Z方向
-    float3 tool_direction = quaternionRotateVector(
-        waypoint.orientation.x, waypoint.orientation.y, waypoint.orientation.z, waypoint.orientation.w, tool_z_axis);
+    CudaVec3 tool_z_axis(0.0f, 0.0f, -1.0f); // 工具的-Z方向
+    CudaQuat waypoint_orientation(waypoint.orientation.x, waypoint.orientation.y, waypoint.orientation.z, waypoint.orientation.w);
+    CudaVec3 tool_direction = waypoint_orientation * tool_z_axis;
 
     // 计算从工具中心到曲面点的向量
     // Compute the vector from the tool center to the point of interest
@@ -76,7 +61,7 @@ __device__ bool isCircularToolCovered(
     float radial_distance_sq = dx*dx + dy*dy + dz*dz;
 
     // We check all if-else in the end. Maybe faster for CUDA?
-
+    
     // 检查投影点是否在工具的有效长度范围内 [0, depth]
     // check the distance
     if (projection_length < 0.0f || projection_length > depth) {
@@ -84,7 +69,7 @@ __device__ bool isCircularToolCovered(
     }
 
     // 检查径向距离是否在覆盖半径内
-    if (radial_distance_sq > radius) {
+    if (radial_distance_sq > radius*radius) {
         return false;
     }
 
@@ -154,7 +139,6 @@ __global__ void coverageKernelDetailed(
     const CudaWaypoint* waypoints, size_t num_waypoints,
     ToolType tool_type,
     const CudaToolParameters* params,
-    // float radius, float depth,
     char* coverage_matrix) {  // two-dim matrix: points × waypoints
     
     // 计算全局索引：每个线程处理一个点-路径点对
@@ -174,7 +158,7 @@ __global__ void coverageKernelDetailed(
     bool covered = checkCoverageByToolType(point, waypoint, tool_type, params);
     
     // 写入结果矩阵
-    coverage_matrix[point_idx * num_waypoints + wp_idx] = covered ? 1 : 0;
+    coverage_matrix[point_idx * num_waypoints + wp_idx] = covered ? (char)1 : 0;
 }
 
 

@@ -1,4 +1,7 @@
 import h5py
+import numpy as np
+
+np.set_printoptions(threshold=np.inf) # visualize all elements
 
 def inspect_h5(filename):
     with h5py.File(filename, 'r') as f:
@@ -42,4 +45,20 @@ def inspect_h5(filename):
 
         f.visititems(print_struture)
 
-inspect_h5("circular_tool_remeshed_saddle_Yang2023Template.h5")
+the_shared_folder = "/home/yt/benchmark_ws/install/benchmarking_3dcpp/share/benchmarking_3dcpp/output/"
+filename= "circular_remeshed_saddle_Yang2023Template_cpu.h5"
+inspect_h5(the_shared_folder + filename)
+
+# Check the covered situation per surface point. For debugging
+with h5py.File(the_shared_folder+filename, 'r') as f:
+    point_covered_num_dataset = f["coverage_result"]["point_covered_num"]
+    point_covered_num_data = point_covered_num_dataset[:]
+    print(f"point_covered_num: {point_covered_num_data}")
+
+    coverage_indices_dataset = f["coverage_indices"]["coverage_indices"]
+    coverage_indices_data = coverage_indices_dataset[:]
+    print(f"coverage_indices: {coverage_indices_data}")
+
+
+
+

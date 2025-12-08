@@ -45,6 +45,7 @@ private:
     bool test_is_running_;
     int curr_test_index_;
     bool initialized_;
+    bool use_cuda_;
 
     rclcpp::TimerBase::SharedPtr timer_;
     

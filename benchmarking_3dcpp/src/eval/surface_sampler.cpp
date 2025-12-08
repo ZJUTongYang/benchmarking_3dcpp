@@ -95,11 +95,8 @@ std::vector<SurfacePoint> SurfaceSampler::rejectionSamplingCPU(
     const std::vector<double>& triangle_areas,
     double total_area) 
 {
-    // std::cout << "total_area: " << total_area  << std::endl;
-    // std::cout << "point_density_: " << point_density_ << std::endl;
-
+    rng_.seed(1);
     const size_t target_points = static_cast<size_t>(total_area * point_density_);
-    // std::cout << "target points: " << target_points << std::endl;
     std::vector<SurfacePoint> samples;
     samples.reserve(target_points);
     

@@ -125,6 +125,44 @@ void saveSurfacePointData(H5::H5File& file, const std::vector<SurfacePoint>& sur
     dataset.write(data.data(), datatype);
 }
 
+void saveCoverageIndices(H5::H5File& file, const std::vector<std::vector<int>>& coverage_indices)
+{
+    if (coverage_indices.empty()) 
+    {
+        return;
+    }
+
+    H5::Group coverage_group = file.createGroup("/coverage_indices");   
+
+    int num_surface_points = coverage_indices.size();
+    int max_covered_num = 0;
+    for(auto iter = coverage_indices.begin(); iter != coverage_indices.end(); iter++)
+    {
+        max_covered_num = std::max(max_covered_num, (int)iter->size());
+    }
+
+    hsize_t dims[2] = {num_surface_points, max_covered_num};
+    H5::DataSpace dataspace(2, dims);
+
+    H5::DataSet dataset = coverage_group.createDataSet("coverage_indices", 
+                                                       H5::PredType::NATIVE_INT, 
+                                                       dataspace
+                                                    );
+
+    std::vector<int> flat_data(coverage_indices.size() * max_covered_num, -1);
+
+    for(size_t i = 0; i < coverage_indices.size(); i++)
+    {
+        for(size_t j = 0; j < coverage_indices[i].size(); j++)
+        {
+            flat_data[i * max_covered_num + j] = coverage_indices[i][j];
+        }
+    }
+
+    dataset.write(flat_data.data(), H5::PredType::NATIVE_INT);
+
+}
+
 void saveCoverageResult(H5::H5File& file, const CoverageResult& the_result)
 {
     H5::Group coverage_group = file.createGroup("/coverage_result");
@@ -231,6 +269,7 @@ bool loadFromHDF5(const std::string& filename,
 bool saveToHDF5(const std::string& filename, const std::string& robot_name, 
     const std::string& scene_name, const std::string& alg_name, 
     const std::shared_ptr<std::vector<SurfacePoint> >& surface_points,
+    const std::vector<std::vector<int> >& the_coverage_indices,
     const CoverageResult& the_result)
 {
     try
@@ -239,6 +278,7 @@ bool saveToHDF5(const std::string& filename, const std::string& robot_name,
         saveMetaData(file, robot_name, scene_name, alg_name);
         saveRobotPath(file, the_result.robot_path);
         saveSurfacePointData(file, *surface_points);
+        saveCoverageIndices(file, the_coverage_indices);
         saveCoverageResult(file, the_result);
         return true;
     }

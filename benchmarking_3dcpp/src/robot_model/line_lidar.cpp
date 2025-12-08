@@ -3,39 +3,25 @@
 #include <string>
 
 LineLidar::LineLidar(std::string robot_name, 
-    unsigned int beam_num, double max_distance, double pitch, double yaw_range, double epsilon):
+    double max_distance, double epsilon, 
+    unsigned int beam_num, 
+    std::vector<Eigen::Vector3d>& given_beam_vectors
+):
     RobotModel(robot_name), beam_num_(beam_num), max_distance_(max_distance), 
-    pitch_(pitch), yaw_range_(yaw_range), epsilon_(epsilon)
+    epsilon_(epsilon)
 {
     // We pre-compute a set of beam orientations
-    beam_directions_.resize(beam_num_);
-
-    double yaw_step = 0.0;
-    if (beam_num_ > 1) {
-        yaw_step = yaw_range_ / (beam_num_ - 1);
-    }
-
-    double pitch_rad = pitch_ * M_PI / 180.0;
-
-    // Considering only yaw, the beam orientaion is [cos(yaw), sin(yaw), 0]^T
-    // The pitch rotation (around the y-axis) is
-    // [cos(pitch), 0, -sin(pitch)]
-    // [0, 1, 0]
-    // [sin(pitch), 0, cos(pitch)]
-    // So the final beam orientation is
-    // [cos(pitch)cos(yaw), sin(yaw), sin(pitch)cos(yaw)]^T
+    beam_directions_.resize(beam_num_, std::vector<float>(3, 0.0));
 
     for(size_t i = 0; i < beam_num_; i++)
     {
-        double current_yaw = - yaw_range_ / 2.0 + i * yaw_step;
-        double yaw_rad = current_yaw * M_PI / 180.0;
-
-        double x = cos(pitch_rad)*cos(yaw_rad);
-        double y = sin(yaw_rad);
-        double z = sin(pitch_rad)*cos(yaw_rad);
-
-        beam_directions_[i] = {x, y, z};
+        for(size_t j = 0; j < 3; j++)
+        {
+            // We change to float
+            beam_directions_[i][j] = given_beam_vectors[i][j];
+        }
     }
+
 }
 
 

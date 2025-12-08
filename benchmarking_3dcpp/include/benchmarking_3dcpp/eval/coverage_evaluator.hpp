@@ -20,6 +20,11 @@ struct Task
     std::shared_ptr<GeometryData> p_surface;
     AlgorithmConfig algorithm;
 
+    // Detailed Coverage situation for inspection. 
+    // Each row: the index of the surface point
+    // the i-th row: the indices of robot waypoints that can cover this point
+    std::vector<std::vector<int> > coverage_indices;
+
     CoverageResult result;
 };
 

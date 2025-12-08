@@ -50,7 +50,6 @@ void Yang2023Template::execute(std::shared_ptr<GeometryData> input)
         request.mesh.vertices[i].z = vertices[i].z();
     }
     
-    // auto request_ptr = std::make_shared<nuc_msgs::srv::GetNuc::Request>(request);
     auto request_ptr = std::make_shared<benchmarking_3dcpp_interfaces::srv::GetNuc::Request>(request);
 
     // We don't know when the service will be ready, so we have to set up a callback function

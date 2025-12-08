@@ -108,16 +108,19 @@ void CoverageEvaluator::eval(int current_test_id,
     // Calculate coverage
     std::vector<std::vector<int>> coverage_indices;
 #ifdef USE_CUDA
-    std::cout << "We use CUDA" << std::endl;
 
-    if (use_cuda_) {
+    if (use_cuda_) 
+    {
+        std::cout << "We use CUDA" << std::endl;
         coverage_indices = calculateCoverageCUDA(surface_points, path, 
                                             p_robot_model);
-    } else {
+    } else 
+    {
+        std::cout << "We use CPU" << std::endl;
         coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
     }
 #else
-    std::cout << "We do not use CUDA" << std::endl;
+    std::cout << "We use CPU" << std::endl;
     coverage_indices = calculateCoverageCPU(p_robot_model, surface_points, path);
 #endif
 
@@ -138,6 +141,8 @@ void CoverageEvaluator::eval(int current_test_id,
     double coverage_ratio = static_cast<double>(covered_count) / 
                            surface_points.size();
     
+    tasks_[current_test_id].coverage_indices = coverage_indices;
+
     tasks_[current_test_id].result.point_covered_num.resize(coverage_indices.size());
     // We need to deduplicate the visiting of consecutive robot waypoints
     for(size_t i = 0; i < coverage_indices.size(); ++i)

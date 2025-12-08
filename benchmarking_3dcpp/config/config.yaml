@@ -14,11 +14,11 @@ robots:
     depth: 0.01 # unit: m
 
   - name: "line_lidar"
-    beam_num: 10000 # This might be too many, but we are testing the computing performance
+    # TODO: interpolate beam vectors in the code to the desired num
+    beam_num: 3 # This might be too many, but we are testing the computing performance
     max_distance: 10 # unit: m
-    pitch: -90.0 # unit: degree
-    yaw_range: 120.0 # unit: degree
     epsilon: 0.001 # This determines whether a surface point is covered by a beam
+    given_beam_vectors: [[0, 0.5, -0.5], [0, -0.5, -0.5], [0, 0, -1]]
     
 # List of scenes to test on
 scenes: 

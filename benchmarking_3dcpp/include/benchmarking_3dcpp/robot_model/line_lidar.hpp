@@ -6,7 +6,11 @@ class LineLidar: public RobotModel
 {
 public: 
     LineLidar(std::string robot_name, 
-        unsigned int beam_num, double max_distance, double pitch, double raw_range, double epsilon);
+        double max_distance, 
+        double epsilon, 
+        unsigned int beam_num, 
+        std::vector<Eigen::Vector3d>& given_beam_vectors
+    );
 
     bool isPointCovered(const SurfacePoint& point,
                            const RobotWaypoint& waypoint) const override;
@@ -45,5 +49,7 @@ private:
 
     double epsilon_;
 
-    std::vector<std::vector<double>> beam_directions_; // [beam_num][2] = [yaw, pitch]
+    // [beam_num][0:3] = [dx, dy, dz] in the robot's frame. 
+    // For example, [0, 0, -1] means pointing at the robot's downward
+    std::vector<std::vector<float>> beam_directions_; 
 };

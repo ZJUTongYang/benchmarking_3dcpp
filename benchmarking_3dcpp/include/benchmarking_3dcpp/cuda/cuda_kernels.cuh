@@ -56,6 +56,11 @@ struct CudaVec3
 struct CudaQuat
 {
     float x, y, z, w;
+    __device__
+    CudaQuat() : x(0), y(0), z(0), w(1) {}
+
+    __device__
+    CudaQuat(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 };
 
 struct CudaSurfacePoint 
