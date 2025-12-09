@@ -9,7 +9,6 @@
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <memory>
-#include <nuc_msgs/srv/get_nuc.hpp>
 #include <optional>
 #include <benchmarking_3dcpp/input_types.hpp>
 #include <yaml-cpp/yaml.h>

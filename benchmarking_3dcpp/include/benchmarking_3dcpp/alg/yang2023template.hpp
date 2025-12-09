@@ -1,6 +1,5 @@
 #pragma once
 #include <rclcpp/rclcpp.hpp>
-#include <nuc_msgs/srv/get_nuc.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <open3d/io/TriangleMeshIO.h>
