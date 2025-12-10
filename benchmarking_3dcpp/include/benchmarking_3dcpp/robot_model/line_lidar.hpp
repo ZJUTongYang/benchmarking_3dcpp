@@ -1,5 +1,6 @@
 #pragma once
 #include "robot_model.hpp"
+#include <Eigen/Dense>
 
 // The beam like robot model: The perception scope is a set of beams. A surface point is captured only if it is within the epsilon distance of the contact point between the surface and a beam
 class LineLidar: public RobotModel
@@ -11,6 +12,8 @@ public:
         unsigned int beam_num, 
         std::vector<Eigen::Vector3d>& given_beam_vectors
     );
+    
+    Eigen::Vector3d slerp(const Eigen::Vector3d& start, const Eigen::Vector3d& end, double t) const ;
 
     bool isPointCovered(const SurfacePoint& point,
                            const RobotWaypoint& waypoint) const override;

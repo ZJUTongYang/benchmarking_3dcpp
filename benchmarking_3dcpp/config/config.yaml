@@ -14,11 +14,10 @@ robots:
     depth: 0.01 # unit: m
 
   - name: "line_lidar"
-    # TODO: interpolate beam vectors in the code to the desired num
-    beam_num: 3 # This might be too many, but we are testing the computing performance
+    beam_num: 300 # This might be too many, but we are testing the computing performance
     max_distance: 10 # unit: m
     epsilon: 0.001 # This determines whether a surface point is covered by a beam
-    given_beam_vectors: [[0, 0.5, -0.5], [0, -0.5, -0.5], [0, 0, -1]]
+    given_beam_vectors: [[0, 0.5, -0.5], [0, -0.5, -0.5], [0, 0, -1]] # This is defined in the robot's frame. Beam vectors will be interpolated if more numbers are required. 
     
 # List of scenes to test on
 scenes: 
