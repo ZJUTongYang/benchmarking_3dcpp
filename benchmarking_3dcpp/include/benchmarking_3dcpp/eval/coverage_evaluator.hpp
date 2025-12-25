@@ -1,12 +1,12 @@
 #pragma once
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/common_types.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
+#include <benchmarking_3dcpp/input_types.hpp>
+#include <benchmarking_3dcpp/types.hpp>
 // #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <vector>
-#include <benchmarking_3dcpp/input_types.hpp>
 #include <yaml-cpp/yaml.h>
-#include <benchmarking_3dcpp/types.hpp>
 #include <benchmarking_3dcpp/scene.hpp>
 #include <H5Cpp.h>
 #include <benchmarking_3dcpp/viz/benchmarking_viz.hpp>
@@ -28,7 +28,8 @@ struct Task
     CoverageResult result;
 };
 
-class CoverageEvaluator {
+class CoverageEvaluator 
+{
 public:
     CoverageEvaluator(bool use_cuda = true, double point_density=1000);
     ~CoverageEvaluator();
@@ -68,6 +69,21 @@ public:
         return tasks_.size();
     }
 
+    std::vector<std::vector<int>> evaluateCoverage(
+        std::shared_ptr<RobotModel> robot,
+        const std::vector<SurfacePoint>& surface_points,
+        const std::vector<RobotWaypoint>& path) {
+#ifdef USE_CUDA
+        if (use_cuda_) {
+            return calculateCoverageCUDA(surface_points, path, robot);
+        } else {
+            return calculateCoverageCPU(robot, surface_points, path);
+        }
+#else
+        return calculateCoverageCPU(robot, surface_points, path);
+#endif
+        }
+
 private:
 
     std::vector<Task> tasks_;
@@ -87,3 +103,6 @@ private:
         std::shared_ptr<RobotModel> the_tool);
 #endif
 };
+
+ToolType getToolTypeFromString(const std::string& tool_name);
+

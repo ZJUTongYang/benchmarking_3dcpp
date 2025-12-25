@@ -1,0 +1,16 @@
+
+string robot_name
+string scene_name
+
+nav_msgs/Path robot_path
+
+---
+
+# the 2-dim array of covered surface points indices. arranged in 1-dim
+# a thing like [[0, 3, 5], [0, 2, 3, 4], ...]
+int32[] covered_surface_points
+
+# the beginning indices of each row
+# [0, 3, 7, ...]
+int32[] start_indices
+

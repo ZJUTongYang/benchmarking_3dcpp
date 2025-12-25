@@ -12,6 +12,7 @@ int main(int argc, char **argv)
   );
 
   executor.add_node(node);
+  node->initialize();
 
   executor.spin();
 

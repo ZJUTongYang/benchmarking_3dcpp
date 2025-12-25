@@ -12,7 +12,8 @@
 #include <benchmarking_3dcpp/cuda/cuda_kernels.cuh>
 #endif
 
-ToolType getToolTypeFromString(const std::string& tool_name) {
+ToolType getToolTypeFromString(const std::string& tool_name) 
+{
     if (tool_name == "circular") 
     {
         return CIRCULAR_TOOL;
@@ -102,7 +103,6 @@ void CoverageEvaluator::eval(int current_test_id,
 {
     std::shared_ptr<GeometryData> surface = tasks_[current_test_id].p_surface;
     const std::vector<RobotWaypoint>& path = tasks_[current_test_id].result.robot_path;
-    // double max_distance = tasks_[current_test_id].robot.tool_radius;
     
     rclcpp::Time t1 = rclcpp::Clock().now();
     // Calculate coverage

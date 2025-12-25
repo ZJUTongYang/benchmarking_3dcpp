@@ -13,16 +13,20 @@
 #include <benchmarking_3dcpp/input_types.hpp>
 #include <yaml-cpp/yaml.h>
 #include <benchmarking_3dcpp/scene.hpp>
+#include <benchmarking_3dcpp/server/server.hpp>
 
 class Benchmarking3DCPP: public rclcpp::Node
 {
 public:
     Benchmarking3DCPP();
 
-private:
     void initialize();
 
-    void scheduleAllTests(int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config);
+private:
+    void initialize_config();
+
+    void scheduleAllTests();
+
     void runSingleTest();
 
     void saveEvalToFile(int task_id);
@@ -48,11 +52,15 @@ private:
 
     rclcpp::TimerBase::SharedPtr timer_;
     
-    std::unique_ptr<CoverageEvaluator> benchmarker_;
+    std::shared_ptr<CoverageEvaluator> benchmarker_;
 
     std::unique_ptr<GeometryLoader> geometryLoader_;
     
     std::unique_ptr<SurfaceSampler> surface_sampler_;
+
+    std::unique_ptr<Benchmarking3DCPPServer> p_server_;
     
     std::string config_filename_;
+
+    YAML::Node config_;
 };

@@ -8,8 +8,9 @@
 using namespace std::chrono_literals;
 
 Yang2023Template::Yang2023Template(rclcpp::Node::SharedPtr node): 
-    node_(node) {
-    // Create client
+    node_(node) 
+{
+    // Create client    
     std::string service_name = "get_"+getName()+"_benchmark";
     client_ = node_->create_client<benchmarking_3dcpp_interfaces::srv::GetNuc>(service_name);
     

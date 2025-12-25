@@ -21,7 +21,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ControlPoint.msg"
   "msg/SplineSurface.msg"
   "srv/GetNuc.srv"
-  DEPENDENCIES shape_msgs nav_msgs geometry_msgs std_msgs sensor_msgs)
+  "srv/GetCoverageSituation.srv"
+  "srv/GetRandomSurfacePoints.srv"
+  DEPENDENCIES shape_msgs nav_msgs geometry_msgs std_msgs sensor_msgs
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -35,4 +38,5 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_export_dependencies(rosidl_default_runtime)
 ament_package()

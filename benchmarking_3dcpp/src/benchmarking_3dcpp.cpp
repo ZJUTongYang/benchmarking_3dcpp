@@ -12,6 +12,7 @@
 #include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
 #include <benchmarking_3dcpp/robot_model/circular.hpp>
 #include <benchmarking_3dcpp/utils/h5_helper.hpp>
+#include <benchmarking_3dcpp/server/server.hpp>
 
 // We customize a yaml loading function so that we can load two-dim arrays as a std::vector<Eigen::Vector3d>
 namespace YAML{
@@ -44,13 +45,35 @@ Benchmarking3DCPP::Benchmarking3DCPP():
         RCLCPP_ERROR(this->get_logger(), "Config filename not set");
         return;
     }
-
-    timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(1000),
-        std::bind(&Benchmarking3DCPP::runSingleTest, this));
 }
 
 void Benchmarking3DCPP::initialize()
+{
+
+    initialize_config();
+
+    std::string serve_as = config_["serve_as"].as<std::string>();
+    if(serve_as == "benchmarker")
+    {
+        scheduleAllTests();
+
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(1000),
+            std::bind(&Benchmarking3DCPP::runSingleTest, this));
+    }
+    else if(serve_as == "server")
+    {
+        std::cout << "We set up tools for CPP algorithms." << std::endl;
+        p_server_ = std::make_unique<Benchmarking3DCPPServer>(shared_from_this(), scenes_, robots_, benchmarker_);
+    }
+    else
+    {
+        throw std::runtime_error("We do not know what to do with this node.");
+    }
+    initialized_ = true;
+}
+
+void Benchmarking3DCPP::initialize_config()
 {
     YAML::Node config = YAML::LoadFile(config_filename_);
 
@@ -140,17 +163,17 @@ void Benchmarking3DCPP::initialize()
 #endif
     benchmarker_ = std::make_unique<CoverageEvaluator>(use_cuda_, point_density);
 
-    int num_robots = config["robots"].size();
-    int num_scenes = config["scenes"].size();
-    int num_algorithms = config["algorithms"].size();
-    
-    scheduleAllTests(num_robots, num_scenes, num_algorithms, config);
+    config_ = config;
 
     initialized_ = true;
 }
 
-void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config)
+void Benchmarking3DCPP::scheduleAllTests()//int num_robots, int num_scenes, int num_algorithms, const YAML::Node& config)
 {
+    int num_robots = config_["robots"].size();
+    int num_scenes = config_["scenes"].size();
+    int num_algorithms = config_["algorithms"].size();
+
     std::cout << "We start scheduling all tests. " << std::endl;
     for(int i = 0; i < num_robots; i++)
     {
@@ -160,10 +183,10 @@ void Benchmarking3DCPP::scheduleAllTests(int num_robots, int num_scenes, int num
             {
                 int task_id = i * num_scenes * num_algorithms + j * num_algorithms + k;
 
-                std::string robot_name = config["robots"][i]["name"].as<std::string>();
-                std::string scene_name = config["scenes"][j]["name"].as<std::string>();
-                std::string algorithm_name = config["algorithms"][k]["name"].as<std::string>();
-                benchmarker_->registerATest(task_id, robot_name, scene_name, algorithm_name, config, scenes_);
+                std::string robot_name = config_["robots"][i]["name"].as<std::string>();
+                std::string scene_name = config_["scenes"][j]["name"].as<std::string>();
+                std::string algorithm_name = config_["algorithms"][k]["name"].as<std::string>();
+                benchmarker_->registerATest(task_id, robot_name, scene_name, algorithm_name, config_, scenes_);
             }
         }
     }

@@ -78,6 +78,7 @@ if(USE_CUDA)
         CUDA_RUNTIME_LIBRARY Shared
         POSITION_INDEPENDENT_CODE ON
         LINKER_LANGUAGE CUDA
+        EXPORT_NAME cuda_kernels
     )
 
     target_include_directories(cuda_kernels PRIVATE
@@ -94,6 +95,47 @@ if(USE_CUDA)
     )
 endif()
 
+# Configure the library
+add_library(${PROJECT_NAME} SHARED
+  src/server/server.cpp
+  src/client/client.cpp
+  src/eval/coverage_evaluator.cpp
+  src/eval/surface_sampler.cpp
+  src/robot_model/line_lidar.cpp
+  src/robot_model/circular.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:/include>
+  $<INSTALL_INTERFACE:include>
+  ${Eigen3_INCLUDE_DIRS}
+)
+
+if(USE_CUDA)
+    target_link_libraries(${PROJECT_NAME}
+        cuda_kernels
+    )
+endif()
+
+target_link_libraries(${PROJECT_NAME}
+  TBB::tbb
+  yaml-cpp
+)
+
+ament_target_dependencies(${PROJECT_NAME}
+  rclcpp
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  tf2_eigen
+  Open3D
+  spdlog
+  std_srvs
+  visualization_msgs
+  benchmarking_3dcpp_interfaces
+)
+
+# Configure benchmarking_3dcpp_node
 add_executable(benchmarking_3dcpp_node 
   src/benchmarking_3dcpp_node.cpp
   src/benchmarking_3dcpp.cpp
@@ -104,7 +146,10 @@ add_executable(benchmarking_3dcpp_node
   src/robot_model/circular.cpp
   src/robot_model/line_lidar.cpp
   src/utils/h5_helper.cpp
-  src/alg/yang2023template.cpp)
+  src/alg/yang2023template.cpp
+  src/server/server.cpp
+  src/client/client.cpp
+)
 
 if(USE_CUDA)
     target_link_libraries(benchmarking_3dcpp_node
@@ -134,6 +179,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
   benchmarking_3dcpp_interfaces
 )
 
+# Configure benchmarking_viz_node
 add_executable(benchmarking_viz_node
   src/benchmarking_viz_node.cpp
   src/viz/benchmarking_viz.cpp
@@ -163,10 +209,36 @@ target_link_libraries(benchmarking_3dcpp_node
   OpenMP::OpenMP_CXX
 )
 
+target_link_libraries(benchmarking_viz_node 
+  OpenMP::OpenMP_CXX
+)
+
+install(TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}_targets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
 install(TARGETS
   benchmarking_3dcpp_node
   benchmarking_viz_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+if(USE_CUDA)
+  install(TARGETS cuda_kernels
+    EXPORT ${PROJECT_NAME}_targets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+  )
+endif()
+
+
+install(DIRECTORY include/
+  DESTINATION include
 )
 
 install(DIRECTORY
@@ -198,6 +270,13 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_export_include_directories(include)
+ament_export_targets(benchmarking_3dcpp_targets HAS_LIBRARY_TARGET)
+
+if(USE_CUDA)
+  ament_export_dependencies(CUDAToolkit)
 endif()
 
 ament_package()
