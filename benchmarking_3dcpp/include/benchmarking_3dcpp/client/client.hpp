@@ -20,12 +20,11 @@ public:
     virtual ~Benchmarking3DCPPClient() = default;
 
 
-    virtual bool getCoverageSituation(const std::string& robot_name, 
+    virtual std::vector<std::vector<int>> getCoverageSituation(const std::string& robot_name, 
                             const std::string& scene_name,
-                            const nav_msgs::msg::Path& robot_path, 
-                            std::vector<std::vector<int>>& coverage_indices) = 0;
+                            const nav_msgs::msg::Path& robot_path) = 0;
 
-    virtual bool getRandomSurfacePoints(const std::string& scene_name, int requested_num, std::vector<geometry_msgs::msg::Point>& result) = 0;
+    virtual std::vector<geometry_msgs::msg::Point> getRandomSurfacePoints(const std::string& scene_name, int requested_num) = 0;
     
     static std::shared_ptr<Benchmarking3DCPPClient> create();
     

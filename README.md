@@ -88,15 +88,17 @@ cd ~/benchmark_ws
 colcon build
 ```
 
-### Run
+## Usage
 
-The following command will launch the NUC algorithm and the platform.
+### Run benchmark or server (configured in param yaml)
+
+Use the following command in both cases:
 
 ```
 ros2 launch benchmarking_3dcpp eval.launch.py
 ```
 
-After a while, you will get results like:
+For the benchmarking purpose, after a while, you will get results like:
 
 ```
 [benchmarking_3dcpp_node-2] We create task 0, robot: circular, scene: remeshed_saddle, algorithm: Yang2023Template
@@ -122,6 +124,30 @@ After a while, you will get results like:
 [benchmarking_3dcpp_node-2]   Max coverage count: 1
 [benchmarking_3dcpp_node-2]   Average coverage count: 0.000790389
 [benchmarking_3dcpp_node-2] Saved to "/home/yt/benchmark_ws/install/benchmarking_3dcpp/share/benchmarking_3dcpp/output/line_lidar_remeshed_saddle_Yang2023Template.h5"
+```
+
+For the server purpose, you need to add the client to your own package: 
+
+```
+(... add the header ...)
+
+#include <benchmarking_3dcpp/client/client.hpp>
+
+(... add the variable ...)
+
+std::shared_ptr<Benchmarking3DCPPClient> client_;
+
+(... in your init function ...)
+
+client_ = Benchmarking3DCPPClient::create();
+
+(... then use it wherever you want the supported functionalities of the server ...)
+
+
+int sample_num = 10;
+std::vector<geometry_msgs::msg::Point> sample_some_points 
+    = client_->getRandomSurfacePoints("remeshed_saddle", sample_num);
+
 ```
 
 ### Visualize the result

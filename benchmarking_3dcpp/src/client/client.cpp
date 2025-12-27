@@ -14,11 +14,12 @@ public:
         random_surface_points_client_ = this->create_client<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints>(
             "/benchmarking_3dcpp/get_random_surface_points");
     }
-    bool getCoverageSituation(const std::string& robot_name, 
+    std::vector<std::vector<int>> getCoverageSituation(const std::string& robot_name, 
                         const std::string& scene_name,
-                        const nav_msgs::msg::Path& robot_path, 
-                        std::vector<std::vector<int>>& coverage_indices) override
+                        const nav_msgs::msg::Path& robot_path) override
     {
+        std::vector<std::vector<int>> coverage_indices;
+
         auto request = std::make_shared<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation::Request>();
         request->robot_name = robot_name;
         request->scene_name = scene_name;
@@ -38,7 +39,7 @@ public:
         // Wait for the response
         if (future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout) {
             RCLCPP_ERROR(this->get_logger(), "Timeout waiting for get_coverage_situation service");
-            return false;
+            return coverage_indices;
         }
         
         auto response = future.get();
@@ -72,12 +73,13 @@ public:
             coverage_indices.emplace_back(row);
         }
         
-        return true;
+        return coverage_indices;
     }
 
-    bool getRandomSurfacePoints(const std::string& scene_name, int requested_num, 
-        std::vector<geometry_msgs::msg::Point>& result) override
+    std::vector<geometry_msgs::msg::Point> getRandomSurfacePoints(const std::string& scene_name, int requested_num) override
     {
+        std::vector<geometry_msgs::msg::Point> result;
+
         auto request = std::make_shared<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints::Request>();
         request->scene_name = scene_name;
         request->num_points = requested_num;
@@ -95,7 +97,7 @@ public:
         // Wait for the response
         if (future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout) {
             RCLCPP_ERROR(this->get_logger(), "Timeout waiting for get_random_surface_points service");
-            return false;
+            return result;
         }
         
         auto response = future.get();
@@ -111,7 +113,7 @@ public:
             result.push_back(point_temp);
         }
         
-        return true;
+        return result;
     }
 private: 
 

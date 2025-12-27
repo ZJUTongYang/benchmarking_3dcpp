@@ -58,7 +58,6 @@ void Benchmarking3DCPPServer::handleGetRandomSurfacePoints(
         // Get random surface points using the internal function
         std::vector<SurfacePoint> surface_points = getRandomSurfacePoints(
             request->scene_name, request->num_points);
-        std::cout << "YT: we check size of the vector: " << surface_points.size() << std::endl;
 
         // Convert SurfacePoint to geometry_msgs::msg::Point
         std::vector<geometry_msgs::msg::Point> points;
