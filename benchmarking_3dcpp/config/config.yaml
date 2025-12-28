@@ -2,7 +2,7 @@
 # Please note that all data (different surfaces, tools, etc) should be in the same unit
 
 version: "1.0"
-serve_as: "server" # "server" # "benchmarker"
+serve_as: "benchmarker" # "server" # "benchmarker"
 description: "3D coverage path planning benchmarking configuration"
 point_density: 50000.0
 use_cuda: true

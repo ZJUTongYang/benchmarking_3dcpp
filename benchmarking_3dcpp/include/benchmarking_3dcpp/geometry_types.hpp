@@ -243,3 +243,37 @@ private:
     }
 
 };
+
+
+
+template <typename Source, typename Target>
+struct GeometryConverterImpl
+{
+    template <typename... Args>
+    static std::shared_ptr<Target> Convert(const std::shared_ptr<Source>& source, Args&&... args)
+    {
+        throw std::runtime_error("Conversion not implemented.");
+    }
+};
+
+template <>
+struct GeometryConverterImpl<PointCloudData, TriangleMeshData>
+{
+    static std::shared_ptr<TriangleMeshData> Convert(const std::shared_ptr<PointCloudData>& mesh, 
+        double relative_resolution)
+    {
+        std::cout << "Converting point cloud to mesh (not implement yet)" << std::endl;
+        auto result = nullptr;
+        return result;
+    }
+    
+};
+
+struct GeometryConverter
+{
+    template <typename Source, typename Target, typename... Args>
+    static std::shared_ptr<Target> cast_to(const std::shared_ptr<Source>& source, Args&&... args)
+    {
+        return GeometryConverterImpl<Source, Target>::Convert(source, std::forward<Args>(args)...);
+    }
+};

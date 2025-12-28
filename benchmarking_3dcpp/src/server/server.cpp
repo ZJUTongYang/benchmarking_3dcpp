@@ -1,11 +1,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include <benchmarking_3dcpp/server/server.hpp>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 #include <unordered_set>
 
-void Benchmarking3DCPPServer::handleGetCoverageSituation(
-    const std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation::Request> request,
-    std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation::Response> response)
+void Benchmarking3DCPPServer::handleGetCoverablePointsForEachWaypoint(
+    const std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint::Request> request,
+    std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint::Response> response)
 {
     
     try {
@@ -20,7 +20,7 @@ void Benchmarking3DCPPServer::handleGetCoverageSituation(
         }
         
         // Get coverage indices using the internal function
-        std::vector<std::vector<int>> coverage_indices = getCoverageSituation(
+        std::vector<std::vector<int>> coverage_indices = getCoverablePointsForEachWaypoint(
             request->robot_name, request->scene_name, positions, orientations);
         
         // Flatten the 2D array and compute start indices
@@ -40,10 +40,13 @@ void Benchmarking3DCPPServer::handleGetCoverageSituation(
             // Update the start index for the next row
             current_start += row.size();
         }
+
+        // We remove the last element from the start_indices vector
+        response->start_indices.pop_back();
         
     }
     catch (const std::exception& e) {
-        RCLCPP_ERROR(node_->get_logger(), "Error in handleGetCoverageSituation: %s", e.what());
+        RCLCPP_ERROR(node_->get_logger(), "Error in handleGetCoverablePointsForEachWaypoint: %s", e.what());
         // Set empty response to indicate failure
         response->covered_surface_points.clear();
         response->start_indices.clear();
@@ -82,7 +85,7 @@ void Benchmarking3DCPPServer::handleGetRandomSurfacePoints(
     }
 }
 
-std::vector<std::vector<int> > Benchmarking3DCPPServer::getCoverageSituation(const std::string& robot_name, std::string scene_name, 
+std::vector<std::vector<int> > Benchmarking3DCPPServer::getCoverablePointsForEachWaypoint(const std::string& robot_name, std::string scene_name, 
     const std::vector<Eigen::Vector3d>& position, const std::vector<Eigen::Quaterniond>& orientation)
 {
     std::vector<std::vector<int> > coverage_indices;
@@ -116,12 +119,24 @@ std::vector<std::vector<int> > Benchmarking3DCPPServer::getCoverageSituation(con
     }
     
     if (benchmarker_) {
+        // This is a vector of length "surface point num", each of which is a vector of robot waypoints that can cover this surface point
         coverage_indices = benchmarker_->evaluateCoverage(p_robot_model, surface_points, path);
     } else {
         throw std::runtime_error("Coverage evaluator not initialized");
     }
 
-    return coverage_indices;
+    // transform the "waypoints_that_covers_me" vector to "coverable_surface_points_by_me" vector
+    std::vector<std::vector<int> > result;
+    result.resize(position.size());
+    for(size_t surface_idx = 0; surface_idx < coverage_indices.size(); surface_idx++)
+    {
+        for(size_t waypoint_idx = 0; waypoint_idx < coverage_indices[surface_idx].size(); waypoint_idx++)
+        {
+            result[waypoint_idx].push_back(static_cast<int>(surface_idx));
+        }
+    }
+
+    return result;
 }
 
 std::vector<SurfacePoint> Benchmarking3DCPPServer::getRandomSurfacePoints(const std::string& scene_name, int requested_num)

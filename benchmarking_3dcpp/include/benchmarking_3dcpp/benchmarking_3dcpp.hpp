@@ -4,13 +4,13 @@
 #include <open3d/Open3D.h>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 #include <benchmarking_3dcpp/robot_model/robot_model.hpp>
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <memory>
 #include <optional>
-#include <benchmarking_3dcpp/input_types.hpp>
+#include <benchmarking_3dcpp/geometry_types.hpp>
 #include <yaml-cpp/yaml.h>
 #include <benchmarking_3dcpp/scene.hpp>
 #include <benchmarking_3dcpp/server/server.hpp>

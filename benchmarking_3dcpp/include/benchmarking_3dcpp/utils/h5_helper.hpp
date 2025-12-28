@@ -3,7 +3,7 @@
 #include <H5Cpp.h>
 #include <string>
 #include <vector>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 
 void loadMetaData(H5::H5File& file, std::string& robot_name, 
     std::string& scene_name, std::string& alg_name);

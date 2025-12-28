@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 #endif
 
-#include <benchmarking_3dcpp/common_types.hpp>
+#include <benchmarking_3dcpp/cuda_types.hpp>
 #include <Eigen/Core>
 
 struct CudaVec3

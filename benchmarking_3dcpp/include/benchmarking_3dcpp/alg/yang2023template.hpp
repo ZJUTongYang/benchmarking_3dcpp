@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 #include <benchmarking_3dcpp/alg/coverage_algorithm.hpp>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 
 #include <benchmarking_3dcpp_interfaces/srv/get_nuc.hpp>
 

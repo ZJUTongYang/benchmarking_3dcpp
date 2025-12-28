@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 
 // Different robots have different motion, perception, and collision models. 
 // We should implement these all in this class

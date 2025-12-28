@@ -27,6 +27,7 @@ find_package(std_srvs REQUIRED)
 find_package(benchmarking_3dcpp_interfaces REQUIRED)
 
 find_package(Open3D REQUIRED)
+find_package(CGAL REQUIRED)
 
 find_package(glfw3 REQUIRED) # required for open3d visualization
 find_package(OpenMP REQUIRED)
@@ -129,6 +130,7 @@ ament_target_dependencies(${PROJECT_NAME}
   geometry_msgs
   tf2_eigen
   Open3D
+  nav_msgs
   spdlog
   std_srvs
   visualization_msgs
@@ -149,6 +151,7 @@ add_executable(benchmarking_3dcpp_node
   src/alg/yang2023template.cpp
   src/server/server.cpp
   src/client/client.cpp
+  src/geometry_types.cpp
 )
 
 if(USE_CUDA)
@@ -174,6 +177,7 @@ ament_target_dependencies(benchmarking_3dcpp_node
   visualization_msgs
   tf2_eigen
   Open3D
+  nav_msgs
   spdlog
   std_srvs
   benchmarking_3dcpp_interfaces
@@ -273,7 +277,7 @@ if(BUILD_TESTING)
 endif()
 
 ament_export_include_directories(include)
-ament_export_targets(benchmarking_3dcpp_targets HAS_LIBRARY_TARGET)
+ament_export_targets(${PROJECT_NAME}_targets HAS_LIBRARY_TARGET)
 
 if(USE_CUDA)
   ament_export_dependencies(CUDAToolkit)

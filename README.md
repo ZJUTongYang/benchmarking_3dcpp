@@ -47,6 +47,12 @@ In robotics, particularly for tasks like cleaning, painting, and inspection on 3
   sudo apt-get install libtbb-dev
   ```
 
+- **CGAL**
+  ```bash
+  sudo apt-get install libcgal-dev
+  sudo apt-get install libgmp-dev libmpfr-dev
+  ```
+
 ### Recommended
 
 - **CUDA (e.g., 11.8)** for accelerated computation.

@@ -9,7 +9,7 @@
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <benchmarking_3dcpp/robot_model/robot_model.hpp>
 #include <benchmarking_3dcpp/scene.hpp>
-#include <benchmarking_3dcpp_interfaces/srv/get_coverage_situation.hpp>
+#include <benchmarking_3dcpp_interfaces/srv/get_coverable_points_for_each_waypoint.hpp>
 #include <benchmarking_3dcpp_interfaces/srv/get_random_surface_points.hpp>
 
 #include <rclcpp/rclcpp.hpp>
@@ -33,9 +33,9 @@ public:
         benchmarker_ = benchmarker;
 
 
-        coverage_situation_service_ = node_->create_service<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation>(
-            "/benchmarking_3dcpp/get_coverage_situation",
-            std::bind(&Benchmarking3DCPPServer::handleGetCoverageSituation, this,
+        coverage_situation_service_ = node_->create_service<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint>(
+            "/benchmarking_3dcpp/get_coverable_points_for_each_waypoint",
+            std::bind(&Benchmarking3DCPPServer::handleGetCoverablePointsForEachWaypoint, this,
             std::placeholders::_1, std::placeholders::_2));
             
         random_surface_points_service_ = node_->create_service<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints>(
@@ -51,19 +51,19 @@ private:
     std::unordered_map<std::string, std::shared_ptr<RobotModel> > robots_;
     std::shared_ptr<CoverageEvaluator> benchmarker_;
 
-    rclcpp::Service<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation>::SharedPtr coverage_situation_service_;
+    rclcpp::Service<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint>::SharedPtr coverage_situation_service_;
     rclcpp::Service<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints>::SharedPtr random_surface_points_service_;
   
-    void handleGetCoverageSituation(
-        const std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation::Request> request,
-        std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverageSituation::Response> response);
+    void handleGetCoverablePointsForEachWaypoint(
+        const std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint::Request> request,
+        std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetCoverablePointsForEachWaypoint::Response> response);
     
     void handleGetRandomSurfacePoints(
         const std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints::Request> request,
         std::shared_ptr<benchmarking_3dcpp_interfaces::srv::GetRandomSurfacePoints::Response> response);
 
     // Internal implementation
-    std::vector<std::vector<int> > getCoverageSituation(const std::string& robot_name, std::string scene_name, 
+    std::vector<std::vector<int> > getCoverablePointsForEachWaypoint(const std::string& robot_name, std::string scene_name, 
         const std::vector<Eigen::Vector3d>& position,
         const std::vector<Eigen::Quaterniond>& orientation);
 

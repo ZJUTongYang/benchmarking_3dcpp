@@ -1,0 +1,121 @@
+<svg width="45" height="45" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 发光滤镜 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- 强烈发光 -->
+    <filter id="strongGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- 霓虹渐变 -->
+    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ff00ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffff00;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 路径渐变 -->
+    <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0099ff;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 背景渐变 -->
+    <radialGradient id="bgGradient">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0f1e;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- 网格图案 -->
+    <pattern id="techGrid" width="5" height="5" patternUnits="userSpaceOnUse">
+      <circle cx="2.5" cy="2.5" r="0.5" fill="#00ffff" opacity="0.3"/>
+    </pattern>
+  </defs>
+  
+  <!-- 深色背景 -->
+  <rect width="45" height="45" fill="url(#bgGradient)"/>
+  
+  <!-- 科技网格 -->
+  <rect width="45" height="45" fill="url(#techGrid)"/>
+  
+  <!-- 扫描线动画效果 -->
+  <rect x="0" y="0" width="45" height="1" fill="#00ffff" opacity="0.5">
+    <animate attributeName="y" from="0" to="45" dur="3s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- 覆盖区域（发光圆环） -->
+  <circle cx="12" cy="12" r="6" fill="none" stroke="#00ffff" stroke-width="1" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="33" cy="20" r="6" fill="none" stroke="#ff00ff" stroke-width="1" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="22" cy="33" r="6" fill="none" stroke="#ffff00" stroke-width="1" opacity="0.6" filter="url(#glow)"/>
+  
+  <!-- 主路径（霓虹效果） -->
+  <path d="M 7 7 Q 15 15, 22 15 T 35 25 Q 30 30, 25 35" 
+        fill="none" 
+        stroke="url(#neonGradient)" 
+        stroke-width="2" 
+        stroke-linecap="round"
+        filter="url(#strongGlow)"
+        opacity="0.9">
+    <animate attributeName="stroke-dasharray" values="0 100;100 0" dur="2s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- 辅助路径 -->
+  <path d="M 10 10 L 20 20 L 30 20 L 38 30" 
+        fill="none" 
+        stroke="url(#pathGradient2)" 
+        stroke-width="1" 
+        stroke-linecap="round"
+        opacity="0.7"
+        filter="url(#glow)"/>
+  
+  <!-- 节点（发光点） -->
+  <circle cx="7" cy="7" r="2" fill="#00ffff" filter="url(#strongGlow)">
+    <animate attributeName="r" values="2;3;2" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="22" cy="15" r="1.5" fill="#ff00ff" filter="url(#glow)"/>
+  <circle cx="35" cy="25" r="1.5" fill="#ffff00" filter="url(#glow)"/>
+  <circle cx="25" cy="35" r="2" fill="#00ffff" filter="url(#strongGlow)">
+    <animate attributeName="r" values="2;3;2" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- 数据可视化（动态柱状图） -->
+  <g transform="translate(28, 5)" filter="url(#glow)">
+    <rect x="0" y="4" width="1.5" height="3" fill="#00ffff">
+      <animate attributeName="height" values="3;6;3" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="2.5" y="2" width="1.5" height="5" fill="#ff00ff">
+      <animate attributeName="height" values="5;2;5" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="5" y="3" width="1.5" height="4" fill="#ffff00">
+      <animate attributeName="height" values="4;7;4" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="7.5" y="1" width="1.5" height="6" fill="#00ff00">
+      <animate attributeName="height" values="6;3;6" dur="2s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  
+  <!-- 雷达扫描效果 -->
+  <g transform="translate(22, 22)">
+    <circle r="15" fill="none" stroke="#00ffff" stroke-width="0.5" opacity="0.3"/>
+    <circle r="10" fill="none" stroke="#00ffff" stroke-width="0.5" opacity="0.3"/>
+    <circle r="5" fill="none" stroke="#00ffff" stroke-width="0.5" opacity="0.3"/>
+    <path d="M 0,0 L 0,-15 A 15,15 0 0,1 10.6,-10.6 z" fill="#00ffff" opacity="0.2">
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="4s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- 边框发光 -->
+  <rect width="45" height="45" fill="none" stroke="url(#neonGradient)" stroke-width="0.5" opacity="0.5" filter="url(#glow)"/>
+</svg>

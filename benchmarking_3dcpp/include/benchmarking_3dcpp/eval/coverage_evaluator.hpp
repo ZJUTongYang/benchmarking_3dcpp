@@ -1,8 +1,8 @@
 #pragma once
-#include <benchmarking_3dcpp/common_types.hpp>
+#include <benchmarking_3dcpp/cuda_types.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
-#include <benchmarking_3dcpp/input_types.hpp>
-#include <benchmarking_3dcpp/types.hpp>
+#include <benchmarking_3dcpp/geometry_types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
 // #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <vector>
@@ -69,6 +69,8 @@ public:
         return tasks_.size();
     }
 
+    // Returns: a vector of size "surface point num". Each element is a vector of indices of waypoints that can cover this point
+    // This enables fast compution of repetitiveness
     std::vector<std::vector<int>> evaluateCoverage(
         std::shared_ptr<RobotModel> robot,
         const std::vector<SurfacePoint>& surface_points,

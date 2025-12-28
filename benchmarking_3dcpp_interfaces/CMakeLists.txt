@@ -21,7 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ControlPoint.msg"
   "msg/SplineSurface.msg"
   "srv/GetNuc.srv"
-  "srv/GetCoverageSituation.srv"
+  "srv/GetCoverablePointsForEachWaypoint.srv"
   "srv/GetRandomSurfacePoints.srv"
   DEPENDENCIES shape_msgs nav_msgs geometry_msgs std_msgs sensor_msgs
 )

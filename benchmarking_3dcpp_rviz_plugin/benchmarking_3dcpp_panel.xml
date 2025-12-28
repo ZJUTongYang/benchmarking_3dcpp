@@ -1,0 +1,6 @@
+<library path="benchmarking_3dcpp_panel">
+  <class type="benchmarking_3dcpp_panel::Benchmarking3DCPPPanel" base_class_type="rviz_common::Panel">
+    <description>A very basic panel for a tutorial</description>
+    <icon>icons/classes/Benchmarking3DCPPPanel.svg</icon>
+  </class>
+</library>

@@ -4,7 +4,7 @@
 #include <numeric>
 #include <random>
 #include <stdexcept>
-#include <benchmarking_3dcpp/input_types.hpp>
+#include <benchmarking_3dcpp/geometry_types.hpp>
 
 SurfaceSampler::SurfaceSampler(double point_density) 
     : point_density_(point_density), rng_(std::random_device{}()) 

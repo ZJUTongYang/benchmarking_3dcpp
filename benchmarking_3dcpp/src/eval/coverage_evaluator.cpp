@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <benchmarking_3dcpp/common_types.hpp>
+#include <benchmarking_3dcpp/cuda_types.hpp>
 #include <benchmarking_3dcpp/eval/coverage_evaluator.hpp>
 #include <benchmarking_3dcpp/eval/surface_sampler.hpp>
 #include <benchmarking_3dcpp/robot_model/line_lidar.hpp>
@@ -181,7 +181,8 @@ std::vector<std::vector<int> > CoverageEvaluator::calculateCoverageCPU(
     // Parallelize over surface points
     std::for_each(std::execution::par_unseq,
                  surface_points.begin(), surface_points.end(),
-                 [&](const SurfacePoint& point) {
+                 [&](const SurfacePoint& point) 
+    {
         size_t idx = &point - &surface_points[0];
         
         for(size_t wp_idx = 0; wp_idx < path.size(); ++wp_idx)

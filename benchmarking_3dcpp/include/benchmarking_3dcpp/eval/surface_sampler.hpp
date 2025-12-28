@@ -1,6 +1,6 @@
 #pragma once
-#include <benchmarking_3dcpp/types.hpp>
-#include <benchmarking_3dcpp/input_types.hpp>
+#include <benchmarking_3dcpp/coverage_types.hpp>
+#include <benchmarking_3dcpp/geometry_types.hpp>
 #include <open3d/geometry/TriangleMesh.h>
 #include <memory>
 #include <random>
